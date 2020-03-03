@@ -1,0 +1,54 @@
+basic:
+  ConnectionConfig:
+    max_peers: 25
+    max_silence: 3000
+    min_keep_time: 5000
+    min_peers: 15
+    ping_interval: 500
+    peer_list_number: 2
+  DowntimeConfig:
+    availability: 0.99
+    interval: 3
+    mtbf: 1440000
+  PeerConfig:
+    bandwidth_dl:
+      name: norm
+      parameters: (8388608, 2228240)
+    bandwidth_ul:
+      name: norm
+      parameters: (3145728, 917540)
+    location:
+      name: sample
+      parameters: &id001
+      - Tokyo
+      - Ireland
+      - Ohio
+      - Other
+  SlowdownConfig:
+    availability: 0.9
+    interval: 5
+    mtbf: 1440000
+    slowdown: 0.1
+bootstrap:
+  ConnectionConfig:
+    max_peers: 500
+    max_silence: 3000
+    min_keep_time: 5000
+    min_peers: 1
+    ping_interval: 2000
+    peer_list_number: 5
+  DowntimeConfig:
+    availability: 0.99
+    interval: 5
+    mtbf: 1440000
+  PeerConfig:
+    bandwidth_dl: 13107200
+    bandwidth_ul: 13107200
+    location:
+      name: sample
+      parameters: *id001
+  SlowdownConfig:
+    availability: 0.99
+    interval: 5
+    mtbf: 1440000
+    slowdown: 0.1

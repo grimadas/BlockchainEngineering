@@ -13,21 +13,26 @@ class BaseMessage(object):
         return '<%s>' % self.__class__.__name__
 
 
-###### Messages ###############
+########## Messages ###############
 
 class Ping(BaseMessage):
+    """Response to ping"""
     pass
 
 
 class Pong(BaseMessage):
+    """Response to pong"""
     pass
 
 
 class RequestPeers(BaseMessage):
+    """Request peers to connect to"""
     pass
 
 
 class PeerList(BaseMessage):
+    """Peer list with known peers"""
+
     def __init__(self, sender, peers):
         super().__init__(sender)
         self.sender = sender
@@ -35,5 +40,5 @@ class PeerList(BaseMessage):
 
 
 class Hello(BaseMessage):
-    "Offer a peer to connect"
+    """Offer a peer to connect"""
     pass

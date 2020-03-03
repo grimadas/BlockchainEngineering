@@ -1,0 +1,40 @@
+# Locations and latencies model for them as measured with AWS  
+- Tokyo
+- Ireland
+- Ohio
+- Other
+---
+Ireland:
+  Ireland:
+    name: invgamma
+    parameters: (6.4360455224301525, 0.8312748033308526, 1.086191852963273)
+  Ohio: &id001
+    name: norm
+    parameters: (73.6995, 0.19583092197097127)
+  Other: &id002
+    name: gamma
+    parameters: (0.9275, 5.25834811785650774, 50)
+  Tokyo: &id003
+    name: norm
+    parameters: (131.0275, 0.25834811785650774)
+Ohio:
+  Ireland: *id001
+  Ohio:
+    name: invgamma
+    parameters: (5.540906482531864, 0.33330564880631053, 0.9872493535175394)
+  Other: *id002
+  Tokyo: &id004
+    name: norm
+    parameters: (156.00904977375566, 0.09469886668079797)
+Other:
+  Ireland: *id002
+  Ohio: *id002
+  Other: *id002
+  Tokyo: *id002
+Tokyo:
+  Ireland: *id003
+  Ohio: *id004
+  Other: *id002
+  Tokyo:
+    name: invgamma
+    parameters: (11.104508341331055, 0.3371934865734555, 2.0258998705983737)
