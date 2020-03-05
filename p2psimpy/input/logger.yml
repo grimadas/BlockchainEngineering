@@ -10,9 +10,10 @@ handlers:
     stream: ext://sys.stdout
   file:
     class: logging.FileHandler
-    level: ERROR
+    level: INFO
     formatter: simple
-    filename: sim.log
+    filename: test.log
+    mode: w
 loggers:
   sampleLogger:
     level: INFO
@@ -20,4 +21,4 @@ loggers:
     propagate: no
 root:
   level: INFO
-  handlers: [console, file]
+  handlers: [file]

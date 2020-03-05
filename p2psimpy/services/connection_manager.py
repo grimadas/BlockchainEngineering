@@ -4,36 +4,35 @@ from random import sample
 from p2psimpy.config import ConnectionConfig
 from p2psimpy.messages import Hello, PeerList, Ping, RequestPeers, Pong
 from p2psimpy.peer import Peer
-from p2psimpy.services.base import BaseService
+from p2psimpy.services.base import BaseHandler, BaseRunner
 
 
-class ConnectionManager(BaseService):
+class ConnectionManager(BaseHandler, BaseRunner):
     """
     Service  to
      - ping peers
      - disconnect unresponsive peers
      - request and manage list of known peers
     """
-    def __repr__(self):
-        return "ConnectionManager(%s)" % self.peer.config.name
 
     def __init__(self, peer: Peer, config: ConnectionConfig):
-        self.peer = peer
+        BaseRunner.__init__(self, peer, config)
         self.last_seen = dict()  # a map: peer -> timestamp
         self.known_peers = set()  # All known peers
         self.disconnected_peers = set()  # Connected in past, now disconnected
-        self.config = config
         self.logger = logging.getLogger(repr(self))
 
-        def disconnect_cb(peer, other):
-            assert peer == self.peer
+        def disconnect_cb(p, other):
+            assert p == self.peer
             self.disconnected_peers.add(other)
 
         self.peer.disconnect_callbacks.append(disconnect_cb)
-        # Run the manager process
-        self.env.process(self.run())
 
-    def handle_message(self, peer, msg):
+    @property
+    def messages(self):
+        return Hello, RequestPeers, PeerList, Ping, Pong,
+
+    def handle_message(self, msg):
         """
         Respond to the arriving messages
         """
@@ -43,17 +42,13 @@ class ConnectionManager(BaseService):
         if isinstance(msg, PeerList):
             self.recv_peerlist(msg)
         if isinstance(msg, Ping):
-            peer.send(msg.sender, Pong(peer))
+            self.peer.send(msg.sender, Pong(self.peer))
         if isinstance(msg, RequestPeers):
-            peer_sample = sample(peer.connections.keys(),
-                                 min(self.config.peer_list_number, len(peer.connections.keys())))
-            reply = PeerList(peer, peer_sample)
+            peer_sample = sample(self.peer.connections.keys(),
+                                 min(self.config.peer_list_number, len(self.peer.connections.keys())))
+            reply = PeerList(self.peer, peer_sample)
             # self.sample_peers(self.config.peer_list_number))
-            peer.send(msg.sender, reply)
-
-    @property
-    def env(self):
-        return self.peer.env
+            self.peer.send(msg.sender, reply)
 
     def ping_peers(self):
         """
@@ -129,7 +124,7 @@ class ConnectionManager(BaseService):
                                 self.env.now, len(self.connected_peers), self.config.min_peers)
             candidates = self.peer_candidates
             if len(candidates) < needed:
-                self.peer.broadcast(RequestPeers(self.peer))
+                self.peer.gossip(RequestPeers(self.peer), self.config.peer_batch_request_number)
             for other in list(candidates)[:needed]:
                 self.peer.bootstrap_connect(other)
 

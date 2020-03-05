@@ -2,26 +2,17 @@ import random
 
 from p2psimpy.config import DisruptionConfig, SlowdownConfig
 from p2psimpy.peer import Peer
-from p2psimpy.services.base import BaseService
+from p2psimpy.services.base import BaseRunner
 
 
-class BaseDisruption(BaseService):
+class BaseDisruption(BaseRunner):
     """
     Disruption in the network
     """
     is_disrupted = False
 
     def __init__(self, peer: Peer, config: DisruptionConfig):
-        self.peer = peer
-        self.config = config
-        self.env.process(self.run())
-
-    @property
-    def env(self):
-        return self.peer.env
-
-    def __repr__(self):
-        return '<%s %s>' % (self.__class__.__name__, self.peer.config.name)
+        super().__init__(peer, config)
 
     def disruption_start(self):
         pass

@@ -34,9 +34,7 @@ class PeerList(BaseMessage):
     """Peer list with known peers"""
 
     def __init__(self, sender, peers):
-        super().__init__(sender)
-        self.sender = sender
-        self.data = set(peers)
+        super().__init__(sender, set(peers))
 
 
 class Hello(BaseMessage):

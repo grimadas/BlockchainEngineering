@@ -1,16 +1,17 @@
 basic:
-  ConnectionConfig:
+  ConnectionManager:
     max_peers: 25
     max_silence: 3000
     min_keep_time: 5000
     min_peers: 15
     ping_interval: 500
     peer_list_number: 2
-  DowntimeConfig:
+    peer_batch_request_number: 3
+  Downtime:
     availability: 0.99
     interval: 3
     mtbf: 1440000
-  PeerConfig:
+  Peer:
     bandwidth_dl:
       name: norm
       parameters: (8388608, 2228240)
@@ -24,30 +25,31 @@ basic:
       - Ireland
       - Ohio
       - Other
-  SlowdownConfig:
+  Slowdown:
     availability: 0.9
     interval: 5
     mtbf: 1440000
     slowdown: 0.1
 bootstrap:
-  ConnectionConfig:
+  ConnectionManager:
     max_peers: 500
     max_silence: 3000
     min_keep_time: 5000
     min_peers: 1
     ping_interval: 2000
     peer_list_number: 5
-  DowntimeConfig:
+    peer_batch_request_number: 5
+  Downtime:
     availability: 0.99
     interval: 5
     mtbf: 1440000
-  PeerConfig:
+  Peer:
     bandwidth_dl: 13107200
     bandwidth_ul: 13107200
     location:
       name: sample
       parameters: *id001
-  SlowdownConfig:
+  Slowdown:
     availability: 0.99
     interval: 5
     mtbf: 1440000

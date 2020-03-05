@@ -5,9 +5,8 @@ import yaml
 
 
 def load_config_parameter(config):
-    if type(config) is dict:
-        if 'dynamic' not in config:
-            return get_random_values(config)[0]
+    if type(config) is dict and 'name' in config and 'parameters' in config:
+        return get_random_values(config)[0]
     else:
         return config
 
@@ -37,6 +36,7 @@ class ConnectionConfig:
     min_peers: int
     max_peers: int
     peer_list_number: int
+    peer_batch_request_number: int
 
 
 @dataclass
