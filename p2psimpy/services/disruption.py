@@ -1,6 +1,5 @@
 import random
 
-from p2psimpy.config import DisruptionConfig, SlowdownConfig
 from p2psimpy.peer import Peer
 from p2psimpy.services.base import BaseRunner
 

@@ -1,4 +1,3 @@
-from dataclasses import dataclass
 from random import sample
 
 from p2psimpy.logger import setup_logger

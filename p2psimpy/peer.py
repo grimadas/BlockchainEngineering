@@ -14,7 +14,7 @@ class Peer:
 
     def __init__(self, sim, name: str, location: str, bandwidth_ul: float, bandwidth_dl: float):
         """
-        Physical peer class
+        Physical representation of a Peer
         :param sim: Simulation environment
         :param name:
         :param location:

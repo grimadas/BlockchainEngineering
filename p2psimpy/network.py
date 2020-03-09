@@ -1,6 +1,3 @@
-from p2psimpy.utils import get_latency_delay
-
-
 class Connection:
 
     def __init__(self, sender, receiver):
@@ -8,7 +5,6 @@ class Connection:
         :param locations: Map that contains the latencies between locations
         """
         self.env = sender.env
-        self.locations = sender.sim.locations
         self.get_latency = self.sender.sim.get_latency_delay
 
         self.sender = sender

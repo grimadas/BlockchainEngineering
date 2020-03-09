@@ -3,40 +3,96 @@ import random
 import networkx as nx
 from simpy import Environment
 
-from p2psimpy.config import ConfigLoader
+from p2psimpy.logger import setup_logger
 from p2psimpy.peer_factory import PeerFactory
 
-from p2psimpy.logger import setup_logger
+from p2psimpy.peer import Peer
+from p2psimpy.services.connection_manager import BaseConnectionManager, P2PConnectionManager
+from p2psimpy.services.disruption import Downtime, Slowdown
+
+from p2psimpy.config import load_config_from_yaml
+from p2psimpy.utils import make_symmetric
 
 
-class Simulation(object):
+class BaseSimulation(object):
     """ Class to represent different topologies and p2p network simulation
     """
+    known_services = [BaseConnectionManager, P2PConnectionManager, Downtime, Slowdown]
+    cash_val = 40
 
-    def __init__(self, logger_dir='logs', num_bootstrap_servers=1, **kwargs):
+
+    def __init__(self, locations: dict = None, services: dict = None, logger_dir='logs', **kwargs):
         # Initialize the logger
         # Set the random seed for replaying simulations
+        self.services = {service.__name__: service for service in self.known_services} # Create a mapping to read from configs
+        # Update service if they are not None
+        if services:
+            self.services.update(services)
+
         if 'random_seed' in kwargs:
             self.random_seed = kwargs.get('random_seed', 42)
             random.seed(self.random_seed)
         self.sim_time = kwargs.get('sim_time', None)
 
         # Setup logging dir
-        self.main_dir = logger_dir
-        self.logger = setup_logger(__name__, self.main_dir+'sim.log')
+        self.sim_dir = logger_dir
+        self.logger = setup_logger(__name__, self.sim_dir+'sim.log')
 
         # Init the environment
         self.env = Environment()
         # Init map with peers
+        if full_config:
+            # Init from the config file, Load config and create peers.
+            # Read peer types
+            #self.peer_map = full_config peer_types
+            # peer type and service
+            # peer type - Peer
+
+
+
+            pass
+        else:
+            # Load defaults
+            pass
+
+
         self.peers = dict()
         self.peer_factory = PeerFactory()
+
+        # Load Locations
+
+        if not locations:
+            # Load defaults
+            pass
+        if type(locations) == str:
+            # yaml file - try to load
+            self._location_generator = load_config_from_yaml(locations).latencies
+        else:
+            self._location_generator = locations.latencies
+
+        # Generate location to store in cache
+        self.locations_cache = {} # self._load_cache(self._location_generator, self.cash_val)
         # Create peer factory from config file
         # ConfigLoader.load_services()
         #
         # self.locations = ConfigLoader.load_latencies()
         # self.env.locations = self.locations
-        self.locations = {}
+
         # self.logger.info("Start simulation")
+
+
+    def _load_cache(self, generator, cache_num, subfield = None):
+
+        if subfield:
+            return [generator.get()[subfield] for i in range(cache_num)]
+        else:
+            return [generator.get() for i in range(cache_num)]
+
+
+
+
+    def add_peer_type(self):
+        pass
 
     def get_latency_delay(self, origin: str, destination: str, n=1):
         """
@@ -47,7 +103,22 @@ class Simulation(object):
         :param n: the size of the latency vector
         :return: list of latencies
         """
+        try:
+            locations = self.locations_cache.pop()
+        except IndexError:
+            self.locations_cache = self._load_cache(self._location_generator, self.cash_val)
+            self.locations_cache)
+            locations = self.locations_cache.pop()
+
+
+
+
+        if origin not in locations or destination not in self.locations[origin]:
+            raise Exception("Location connection not known")
+
         distribution = self.locations[origin][destination]
+        if type(distribution) == float or type(distribution) == int:
+            return distribution if n == 1 else [distribution] * n
         return distribution.generate(n)
 
     def init_bootstrap_servers(self, num=1):

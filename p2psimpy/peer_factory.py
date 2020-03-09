@@ -1,16 +1,14 @@
 import logging
 
-from p2psimpy.peer import Peer
-from p2psimpy.services.connection_manager import ConnectionManager
-from p2psimpy.services.disruption import Downtime, Slowdown
 
-from p2psimpy.config import load_from_config, PeerConfig, PeerNameGenerator, ConnectionConfig, \
+
+from p2psimpy.config import load_from_config, PeerNameGenerator, ConnectionConfig, \
     SlowdownConfig, DisruptionConfig
 
 
 class PeerFactory:
     CLASS_MAP = {
-        'ConnectionManager': ConnectionManager,
+        'ConnectionManager': BaseConnectionManager,
         'Downtime': Downtime,
         'Slowdown': Slowdown
     }

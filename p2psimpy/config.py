@@ -1,29 +1,26 @@
 import inspect
-from dataclasses import dataclass, field
 import yaml
 
 import scipy.stats
 from ast import literal_eval as make_tuple
 from random import choices
-from typing import Any
-
-import attr
 
 
-class Yamlable:
+class Dist:
+
+    def __init__(self, name: str, params):
+        self.name = name
+        self.params = params
+
+    def to_repr(self):
+        return {'name': self.name, 'params': str(self.params)}
 
     @classmethod
-    def load(cls, yaml_file):
-        cls(*(load_config_parameter(config[field.name]) for field in fields(cls)))
+    def from_repr(cls, yaml_dict):
+        return cls(**yaml_dict)
 
-    def save(self, yaml_file):
-        pass
-
-
-@dataclass
-class Dist:
-    name: str = 'sample'
-    params: Any = ('Other', 'Ohio')
+    # def __str__(self):
+    #    return str({'Dist': {'name': self.name, 'params': str(self.params)}})
 
     def generate(self, n=1):
         """
@@ -33,6 +30,8 @@ class Dist:
             weights = self.params['weights'] if 'weights' in self.params else None
             values = self.params['values'] if 'values' in self.params \
                 else self.params
+            weights = make_tuple(weights) if type(weights) == str else weights
+            values = make_tuple(values) if type(values) == str else values
             res = choices(values, weights=weights, k=n)
             return res if n != 1 else res[0]
 
@@ -45,27 +44,105 @@ class Dist:
         return self.generate(1)
 
 
+class Wrap:
+    def __init__(self, cls):
+        self._wrap = cls
+
+    def to_repr(self):
+        return {self._wrap.__class__.__name__: self._wrap.to_repr()}
+
+    @classmethod
+    def from_repr(cls, yaml_dict):
+        return cls(**yaml_dict)
+
+    def __str__(self):
+        return str(self._wrap)
+
+    def get(self):
+        return self._wrap.__get__(None, None)
+
+    def generate(self, n=1):
+        return self._wrap.generate(n)
+
+
+class ConfigWrap:
+    def __init__(self, cls):
+        self.cls = cls
+
+    def to_repr(self):
+        return self.cls.repr()
+
+    def __str__(self):
+        return str(self.cls.repr())
+
+    def get(self):
+        return self.cls.get()
+
+
 class Config:
     @classmethod
-    def get_attr(cls):
-        return {i[0]: i[1] for i in inspect.getmembers(cls) if not i[0].startswith('_')
-                and not callable(i[1])}
+    def _serialize(cls, val):
+        if isinstance(val, (tuple, list, dict)):
+            if type(val) == dict:
+                return {cls._serialize(k): cls._serialize(v) for k, v in val.items()}
+            else:
+                return list(cls._serialize(k) for k in val)
+        else:
+            if type(val) == Wrap or type(val) == ConfigWrap:
+                return val.to_repr()
+            else:
+                return val
+
+    @classmethod
+    def _deserialize(cls, val):
+        if type(val) == dict:
+            if 'Dist' in val:
+                return Wrap(Dist(**val['Dist']))
+            else:
+                return {k: cls._deserialize(v) for k, v in val.items()}
+        else:
+            return val
+
+    @classmethod
+    def get_attr_repr(cls):
+        for i in inspect.getmembers(cls):
+            if not i[0].startswith('_') and not callable(i[1]):
+                yield cls._serialize(i)
 
     @classmethod
     def repr(cls):
-        root = {cls.__name__: {}}
+        root = dict()
+        root[str(cls.__name__)] = dict()
         main = root[cls.__name__]
-        main.update(cls.get_attr())
+        v = cls.get_attr_repr()
+        main.update(cls.get_attr_repr())
         return root
 
     @classmethod
-    def get(cls):
+    def _get(cls, val):
+        if type(val) == dict:
+            return {k: cls._get(v) for k, v in val.items()}
+        elif isinstance(val, list):
+            return [cls._get(v) for v in val]
+        if type(val) == Wrap or type(val) == ConfigWrap:
+            return val.get()
+        else:
+            return val
+
+    @classmethod
+    def get(cls, n=1):
+        full_dict = dict()
         for i in inspect.getmembers(cls):
             if not i[0].startswith('_') and not callable(i[1]):
-                if type(i[1]) == Wrap or type(i[1]) == Config:
-                    yield i[0], i[1].get()
-                else:
-                    yield i[0], i[1]
+                full_dict[i[0]] = cls._get(i[1])
+        return full_dict
+
+    @classmethod
+    def from_repr(cls, cls_name, yaml_dict):
+        cls.__name__ = cls_name
+        cls.__qualname__ = cls_name
+        for k, v in cls._deserialize(yaml_dict).items():
+            setattr(cls, k, v)
 
 
 class PeerNameGenerator:
@@ -81,28 +158,6 @@ class PeerNameGenerator:
         return peer_type + "_" + str(self.peer_indexes[peer_type])
 
 
-@dataclass
-class ConnectionConfig:
-    ping_interval: int = 500
-    max_silence: int = 20
-    min_keep_time: int = 20
-    min_peers: int = 5
-    max_peers: int = 30
-    peer_list_number: int = 1
-    peer_batch_request_number: int = 3
-
-
-def load_config_parameter(config):
-    if type(config) is dict and 'name' in config and 'parameters' in config:
-        return get_random_values(config)[0]
-    else:
-        return config
-
-
-def load_from_config(cls, config):
-    return cls(*(load_config_parameter(config[field.name]) for field in fields(cls)))
-
-
 class ConfigLoader:
 
     @staticmethod
@@ -116,16 +171,14 @@ class ConfigLoader:
             return list(yaml.safe_load_all(s))[1]
 
 
-@dataclass
-class DisruptionConfig:
-    mtbf: int  # Mean time between failures = 24. * 60 * 60  # secs (mean time between failures)
-    availability: float  # = 0.97  # Average availability of the service
-    interval: int  # = 1.  # tick interval
+def load_config_from_yaml(yaml_file):
+    class NewConfig(Config): pass
 
-
-@dataclass
-class SlowdownConfig(DisruptionConfig):
-    slowdown: float  # 0.2
+    with open(yaml_file) as s:
+        raw = yaml.load(s)
+    cls_name = list(raw.keys())[0]
+    NewConfig.from_repr(cls_name, raw[cls_name])
+    return NewConfig
 
 
 def from_config(cls, name_gen: PeerNameGenerator, peer_type: str, config: dict):
