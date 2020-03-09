@@ -1,19 +1,16 @@
-import logging.config
-import yaml
+import logging
+
+formatter = logging.Formatter('%(name)s %(levelname)s %(message)s')
 
 
-def init_log():
-    with open('/Users/bulat/projects/tudelft/BlockchainEngineering/p2psimpy/input/logger.yml', 'r') as f:
-        config = yaml.safe_load(f.read())
-        logging.config.dictConfig(config)
+def setup_logger(name, log_file, level=logging.INFO):
+    """To setup as many loggers as you want"""
 
+    handler = logging.FileHandler(log_file)
+    handler.setFormatter(formatter)
 
-def reset_log():
-    with open('/Users/bulat/projects/tudelft/BlockchainEngineering/p2psimpy/input/logger.yml', 'r') as f:
-        config = yaml.safe_load(f.read())
-        log_filename = config['handlers']['file']['filename']
-        import os
-        try:
-            os.remove(log_filename)
-        except OSError:
-            pass
+    logger = logging.getLogger(name)
+    logger.setLevel(level)
+    logger.addHandler(handler)
+
+    return logger

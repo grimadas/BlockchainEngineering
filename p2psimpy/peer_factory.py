@@ -21,7 +21,7 @@ class PeerFactory:
         'Slowdown': SlowdownConfig
     }
 
-    def __init__(self, raw_peer_config_map: dict = None):
+    def __init__(self):
         # Services of a peer type
         self.services = {}
         # Configuration data classes for each service
@@ -32,16 +32,17 @@ class PeerFactory:
         self.name_generator = PeerNameGenerator()
         self.logger = logging.getLogger(repr(self))
 
-        if raw_peer_config_map:
-            # Parse the full configuration and add services
-            for p_type in raw_peer_config_map:
-                for service_name in raw_peer_config_map[p_type]:
-                    if service_name != 'Peer':
-                        self.add_service_with_conf(p_type, self.CLASS_MAP[service_name],
-                                                   self.CONFIG_CLASS_MAP[service_name],
-                                                   raw_peer_config_map[p_type][service_name])
-                # Add peer configuration
-                self.raw_configs[p_type]['Peer'] = raw_peer_config_map[p_type]['Peer']
+    def load_from_conf(self, config):
+        # Parse the full configuration and add services
+        for p_type in config:
+            for service_name in config[p_type]:
+                if service_name != 'Peer':
+                    self.add_service_with_conf(p_type, self.CLASS_MAP[service_name],
+                                               self.CONFIG_CLASS_MAP[service_name],
+                                               config[p_type][service_name])
+            # Add peer configuration
+            # Exception not known service
+            self.raw_configs[p_type]['Peer'] = config[p_type]['Peer']
 
     def add_service_with_conf(self, peer_type, service_class, service_config_class, raw_config):
         """

@@ -1,32 +1,54 @@
-import logging
 import random
 
 import networkx as nx
 from simpy import Environment
 
 from p2psimpy.config import ConfigLoader
-from p2psimpy.logger import reset_log
 from p2psimpy.peer_factory import PeerFactory
 
+from p2psimpy.logger import setup_logger
 
-class BaseSimulation(object):
+
+class Simulation(object):
     """ Class to represent different topologies and p2p network simulation
     """
 
-    def __init__(self, num_bootstrap_servers=1):
-        self.current_graph = nx.Graph()
-        # reset_log()
-        self.logger = logging.getLogger(__name__)
-        # Starting simulation
+    def __init__(self, logger_dir='logs', num_bootstrap_servers=1, **kwargs):
+        # Initialize the logger
+        # Set the random seed for replaying simulations
+        if 'random_seed' in kwargs:
+            self.random_seed = kwargs.get('random_seed', 42)
+            random.seed(self.random_seed)
+        self.sim_time = kwargs.get('sim_time', None)
+
+        # Setup logging dir
+        self.main_dir = logger_dir
+        self.logger = setup_logger(__name__, self.main_dir+'sim.log')
+
+        # Init the environment
         self.env = Environment()
-        # other peers
-        self.bootstrap_peers = list()
+        # Init map with peers
         self.peers = dict()
+        self.peer_factory = PeerFactory()
         # Create peer factory from config file
-        self.peer_factory = PeerFactory(ConfigLoader.load_services())
-        self.locations = ConfigLoader.load_latencies()
-        self.env.locations = self.locations
-        self.logger.info("Start simulation")
+        # ConfigLoader.load_services()
+        #
+        # self.locations = ConfigLoader.load_latencies()
+        # self.env.locations = self.locations
+        self.locations = {}
+        # self.logger.info("Start simulation")
+
+    def get_latency_delay(self, origin: str, destination: str, n=1):
+        """
+        Get latency delay according to the latency distribution
+        :param locations: map that contains distance between locations (in ms)
+        :param origin: from location
+        :param destination: to location
+        :param n: the size of the latency vector
+        :return: list of latencies
+        """
+        distribution = self.locations[origin][destination]
+        return distribution.generate(n)
 
     def init_bootstrap_servers(self, num=1):
         """
@@ -121,4 +143,7 @@ class BaseSimulation(object):
 
     def stop(self):
         self.env.exit(0)
+
+class P2PSimulation(Simulation):
+
 

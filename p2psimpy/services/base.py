@@ -1,14 +1,13 @@
 class BaseService(object):
-    def __init__(self, peer, config):
+    def __init__(self, peer,  **kwargs):
         self.peer = peer
-        self.config = config
 
     @property
     def env(self):
         return self.peer.env
 
     def __repr__(self):
-        return '<%s %s>' % (self.__class__.__name__, self.peer.config.name)
+        return '<%s %s>' % (self.__class__.__name__, self.peer.name)
 
 
 class BaseHandler(BaseService):
@@ -42,6 +41,10 @@ class MockHandler(BaseHandler):
     BaseService that will trigger on a event handle_message
     """
 
+    def __init__(self, peer, **kwargs):
+        super().__init__(peer, **kwargs)
+        self._messages = kwargs.pop('messages', [])
+
     def handle_message(self, msg):
         """this callable is added as a listener to Peer.listeners"""
         pass
@@ -49,7 +52,7 @@ class MockHandler(BaseHandler):
     @property
     def messages(self):
         # Specify what messages will be processed by the service
-        return self.config.messages
+        return self._messages
 
 
 class MockRunner(BaseRunner):

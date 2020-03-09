@@ -1,29 +1,45 @@
-import logging
+
+import os
 import random
 
 from simpy import Store
 
-from p2psimpy.config import PeerConfig
+from p2psimpy.logger import setup_logger
 from p2psimpy.messages import BaseMessage, Hello
 from p2psimpy.network import Connection
 from p2psimpy.services.base import BaseHandler, BaseRunner
 
 
 class Peer:
-    def __init__(self, env, config: PeerConfig):
-        self.env = env
-        self.config = config
-        self.logger = logging.getLogger(repr(self))
+
+    def __init__(self, sim, name: str, location: str, bandwidth_ul: float, bandwidth_dl: float):
+        """
+        Physical peer class
+        :param sim: Simulation environment
+        :param name:
+        :param location:
+        """
+        self.sim = sim
+        self.env = sim.env
+        self.name = name
+        self.location = location
+        self.bandwidth_ul = bandwidth_ul
+        self.bandwidth_dl = bandwidth_dl
+
+        peer_repr = repr(self)
+        self.log_name = os.path.join(sim.sim_dir, peer_repr+".log")
+        self.logger = setup_logger(peer_repr, self.log_name )
 
         # Message queue for the received messages
-        self.msg_queue = Store(env)
-        # Network conenctions
+        self.msg_queue = Store(self.env)
+
+        # Network connections
         self.online = True
         self.connections = dict()
 
         # Known peers
-        self.known_peers = set()
         self.disconnect_callbacks = []
+
         # Peer services
         self.handlers = {}  # Service.handle_message(self, msg) called on message
         self.mh_map = {}  # Message -> Handler map
@@ -33,30 +49,37 @@ class Peer:
         self.storage = {}
 
         # Start peer as it is created
-        env.process(self.run())
-
-    @property
-    def name(self):
-        return self.config.name
+        self.env.process(self.run())
 
     def __repr__(self):
-        return '<%s %s>' % (self.__class__.__name__, self.config.name)
+        return '%s %s' % (self.__class__.__name__, self.name)
 
     def __lt__(self, other):
         return self.name < other.name
 
+    def run(self):
+        while True:
+            # Peer is online and listens to the messages received
+            msg = yield self.msg_queue.get()
+            self.receive(msg)
+
     def is_connected(self, other):
         return other in self.connections
 
-    def get_peer_sample(self):
-        return random.sample(list(self.known_peers), min(len(self.known_peers), 5))
-
     def bootstrap_connect(self, other):
-        # create ad-hoc connection and send Hello
+        """
+        Create ad-hoc connection and send Hello
+        :param other: peer object
+        """
+        #
         cnx = Connection(self, other)
         cnx.send(Hello(self), connect=True)
 
     def connect(self, other):
+        """
+        Add peer to the connections and repeat the same with other peer
+        :param other: peer object
+        """
         if not self.is_connected(other):
             self.logger.info("Connecting to %s", repr(other))
             self.connections[other] = Connection(self, other)
@@ -64,34 +87,11 @@ class Peer:
             if not other.is_connected(self):
                 other.connect(self)
 
-    def store(self, storage_name, msg_id, msg):
-        if storage_name not in self.storage:
-            self.logger.error("No storage %s found", storage_name)
-            raise Exception("No storage %s found", storage_name)
-        self.storage[storage_name].add(msg_id, msg)
-
-    def add_storage(self, storage_name, storage):
-        self.storage[storage_name] = storage
-
-    def add_service(self, service):
-        """
-        Add service to the peer
-        """
-        serv_name = type(service).__name__
-        if isinstance(service, BaseHandler):
-            self.handlers[serv_name] = service
-            for m in service.messages:
-                if m not in self.mh_map:
-                    self.mh_map[m] = set()
-                self.mh_map[m].add(serv_name)
-        if isinstance(service, BaseRunner):
-            self.runners[serv_name] = service
-
-    def start_all_runners(self):
-        for runner in self.runners.values():
-            runner.start()
-
     def disconnect(self, other):
+        """
+        Disconnect with previously connected peer
+        :param other: peer object
+        """
         if self.is_connected(other):
             self.logger.warning("%s: Breaking connection with %s", self.env.now, repr(other))
             del self.connections[other]
@@ -101,6 +101,11 @@ class Peer:
                 cb(self, other)
 
     def receive(self, msg):
+        """
+        Receive message, will trigger handlers on the message
+        :param msg:
+        :return:
+        """
         assert isinstance(msg, BaseMessage)  # Make sure the message is known
         self.logger.info("%s: Received message %s", self.env.now, type(msg))
         if type(msg) not in self.mh_map:
@@ -140,8 +145,29 @@ class Peer:
         for other in self.connections:
             self.send(other, msg)
 
-    def run(self):
-        while True:
-            # Peer is online and listens to the messages received
-            msg = yield self.msg_queue.get()
-            self.receive(msg)
+    def add_service(self, service):
+        """
+        Add service to the peer
+        """
+        serv_name = type(service).__name__
+        if isinstance(service, BaseHandler):
+            self.handlers[serv_name] = service
+            for m in service.messages:
+                if m not in self.mh_map:
+                    self.mh_map[m] = set()
+                self.mh_map[m].add(serv_name)
+        if isinstance(service, BaseRunner):
+            self.runners[serv_name] = service
+
+    def start_all_runners(self):
+        for runner in self.runners.values():
+            runner.start()
+
+    def store(self, storage_name, msg_id, msg):
+        if storage_name not in self.storage:
+            self.logger.error("No storage %s found", storage_name)
+            raise Exception("No storage %s found", storage_name)
+        self.storage[storage_name].add(msg_id, msg)
+
+    def add_storage(self, storage_name, storage):
+        self.storage[storage_name] = storage

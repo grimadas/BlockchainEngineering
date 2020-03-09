@@ -1,4 +1,4 @@
-from p2psimpy.simulation import BaseSimulation
+from p2psimpy.simulation import Simulation
 import matplotlib.pyplot as plt
 import networkx as nx
 from matplotlib.animation import FuncAnimation
@@ -7,7 +7,7 @@ from networkx.drawing.nx_agraph import graphviz_layout
 from p2psimpy.consts import MBit
 
 
-class VisualSimulation(BaseSimulation):
+class VisualSimulation(Simulation):
 
     def __init__(self, num_bootstrap=1, delta=50, total_run=3000):
         super().__init__(num_bootstrap)
