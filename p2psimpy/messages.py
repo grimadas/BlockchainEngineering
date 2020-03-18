@@ -1,4 +1,5 @@
 class BaseMessage(object):
+    __slots__ = ('sender', 'data')
     base_size = 20
 
     def __init__(self, sender, data=None):
@@ -10,7 +11,9 @@ class BaseMessage(object):
         return self.base_size + len(repr(self.data))
 
     def __repr__(self):
-        return '<%s>' % self.__class__.__name__
+        msg_type = '%s:' % self.__class__.__name__
+        data = self.data if self.data else ""
+        return msg_type + data
 
 
 ########## Messages ###############
@@ -35,6 +38,9 @@ class PeerList(BaseMessage):
 
     def __init__(self, sender, peers):
         super().__init__(sender, set(peers))
+
+    def __repr__(self):
+        return 'PeerList'
 
 
 class Hello(BaseMessage):

@@ -1,6 +1,5 @@
 from random import sample
 
-from p2psimpy.logger import setup_logger
 from p2psimpy.messages import Hello, PeerList, Ping, RequestPeers, Pong
 from p2psimpy.peer import Peer
 from p2psimpy.services.base import BaseHandler, BaseRunner
@@ -28,7 +27,6 @@ class BaseConnectionManager(BaseHandler, BaseRunner):
         self.last_seen = dict()  # a map: peer -> timestamp
         self.known_peers = set()  # All known peers
         self.disconnected_peers = set()  # Connected in past, now disconnected
-        self.logger = setup_logger(repr(self), peer.log_name)
 
         def disconnect_cb(p, other):
             assert p == self.peer
@@ -66,7 +64,6 @@ class BaseConnectionManager(BaseHandler, BaseRunner):
         if other not in self.peer.connections:
             self.peer.connect(other)
             self.peer.send(other, Hello(self.peer))
-            self.peer.send(other, RequestPeers(self.peer))
 
     def disconnect_unresponsive_peers(self):
         now = self.env.now
@@ -81,14 +78,11 @@ class BaseConnectionManager(BaseHandler, BaseRunner):
     def connected_peers(self):
         return self.peer.connections.keys()
 
-    def run_script(self):
-        self.ping_peers()
-        self.disconnect_unresponsive_peers()
-        yield self.env.timeout(self.ping_interval)
-
     def run(self):
         while True:
-            self.run_script()
+            self.ping_peers()
+            self.disconnect_unresponsive_peers()
+            yield self.env.timeout(self.ping_interval)
 
 
 class P2PConnectionManager(BaseConnectionManager):
@@ -107,21 +101,21 @@ class P2PConnectionManager(BaseConnectionManager):
           min_keep_time: int - Minimum time to keep connection between peers. Default: 3000 ms
 
           peer_list_number - Number of peers in a PeerList request upon requesting peers, Default: 1
-          min_peers - minimum number of peers to have in connections. Default: 10
-          max_peers - maximum number of peers to have in connections. Default: 20
+          min_peers - minimum number of peers to have in connections. Default: 15
+          max_peers - maximum number of peers to have in connections. Default: 25
           peer_batch_request - number of peers to request peers at the same time. Default: 5
         """
         BaseConnectionManager.__init__(self, peer, **kwargs)
 
         # Connection Manager Attributes
         self.peer_list_number = kwargs.pop('peer_list_number', 1)
-        self.min_peers = kwargs.pop('min_peers', 10)
-        self.max_peers = kwargs.pop('min_peers', 20)
+        self.min_peers = kwargs.pop('min_peers', 15)
+        self.max_peers = kwargs.pop('max_peers', 25)
         self.peer_batch_request = kwargs.pop('peer_batch_request', 5)
 
     @property
     def messages(self):
-        return super().messages, RequestPeers, PeerList
+        return super().messages + (RequestPeers, PeerList,)
 
     def handle_message(self, msg):
         """
@@ -150,6 +144,16 @@ class P2PConnectionManager(BaseConnectionManager):
         candidates = self.known_peers.difference(set(self.connected_peers))
         return candidates.difference(self.disconnected_peers)
 
+    def recv_hello(self, msg):
+        """
+        Receive introduction message
+        """
+        other = msg.sender
+        if other not in self.peer.connections:
+            self.peer.connect(other)
+            self.peer.send(other, Hello(self.peer))
+            self.peer.send(other, RequestPeers(self.peer))
+
     def disconnect_slowest_peer(self):
         """
         Try to disconnect the slowest peer
@@ -176,7 +180,7 @@ class P2PConnectionManager(BaseConnectionManager):
                                 self.env.now, len(self.connected_peers), self.min_peers)
             candidates = self.peer_candidates
             if len(candidates) < needed:
-                self.peer.gossip(RequestPeers(self.peer), self.peer_batch_request)
+                self.peer.gossip(RequestPeers(self.peer), self.peer_batch_request, exclude_bootstrap=False)
             for other in list(candidates)[:needed]:
                 self.peer.bootstrap_connect(other)
 
@@ -188,6 +192,9 @@ class P2PConnectionManager(BaseConnectionManager):
             for i in range(num):
                 self.disconnect_slowest_peer()
 
-    def run_script(self):
-        self.monitor_connections()
-        super().run_script()
+    def run(self):
+        while True:
+            self.monitor_connections()
+            self.ping_peers()
+            self.disconnect_unresponsive_peers()
+            yield self.env.timeout(self.ping_interval)

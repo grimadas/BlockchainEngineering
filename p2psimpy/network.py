@@ -5,17 +5,18 @@ class Connection:
         :param locations: Map that contains the latencies between locations
         """
         self.env = sender.env
-        self.get_latency = self.sender.sim.get_latency_delay
-
         self.sender = sender
         self.receiver = receiver
+
+        self.get_latency = self.sender.sim.get_latency_delay
+        self.start_time = self.env.now
 
     def __repr__(self):
         return '<Connection %r -> %r>' % (self.sender, self.receiver)
 
     @property
     def latency(self):
-        return self.get_latency(self.sender.location, self.receiver.location)
+        return max(self.get_latency(self.sender.location, self.receiver.location), 0)
 
     @property
     def bandwidth(self):
@@ -32,11 +33,12 @@ class Connection:
 
         def _transfer():
             bytes = msg.size
+            sender = msg.sender
             delay = bytes / self.sender.bandwidth_ul
             delay += bytes / self.receiver.bandwidth_dl
             delay += self.latency / 2
             yield self.env.timeout(delay)
-            if self.receiver.is_connected(msg.sender) or connect:
+            if self.receiver.is_connected(sender) or connect:
                 self.receiver.msg_queue.put(msg)
 
         self.env.process(_transfer())

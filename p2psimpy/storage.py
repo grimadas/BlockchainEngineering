@@ -2,7 +2,8 @@
 
 class Storage:
 
-    txs = dict()
+    def __init__(self):
+        self.txs = dict()
 
     def add(self, tx_id, tx):
         if tx_id not in self.txs:

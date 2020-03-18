@@ -1,33 +1,35 @@
+import os
 import random
+from itertools import groupby
 
 import networkx as nx
 from simpy import Environment
 
+from p2psimpy.config import load_config_from_yaml
+from p2psimpy.defaults import get_default_bootstrap_type
 from p2psimpy.logger import setup_logger
 from p2psimpy.peer_factory import PeerFactory
-
-from p2psimpy.peer import Peer
 from p2psimpy.services.connection_manager import BaseConnectionManager, P2PConnectionManager
 from p2psimpy.services.disruption import Downtime, Slowdown
-
-from p2psimpy.config import load_config_from_yaml
-from p2psimpy.utils import make_symmetric
+from p2psimpy.utils import Cache
 
 
 class BaseSimulation(object):
-    """ Class to represent different topologies and p2p network simulation
+    """
+    Main class to run simulation.
     """
     known_services = [BaseConnectionManager, P2PConnectionManager, Downtime, Slowdown]
-    cash_val = 40
+    cash_val = 50
 
-
-    def __init__(self, locations: dict = None, services: dict = None, logger_dir='logs', **kwargs):
-        # Initialize the logger
-        # Set the random seed for replaying simulations
-        self.services = {service.__name__: service for service in self.known_services} # Create a mapping to read from configs
-        # Update service if they are not None
-        if services:
-            self.services.update(services)
+    def __init__(self, locations, topology, peer_types_map, logger_dir='logs', **kwargs):
+        """
+            Initialize simulation with known locations, topology and services.
+            :param locations: Known locations. Either a yaml file_name, or a Config class.
+            :param topology: subscribable object map: peer_id -> type, optionally also connections to other peers
+            :param peer_types_map: A map with 'type' -> PeerType objects
+            :param logger_dir: directory to store peer logs. default: './logs/'
+            :param random_seed: for reproducibility for your experiments.
+        """
 
         if 'random_seed' in kwargs:
             self.random_seed = kwargs.get('random_seed', 42)
@@ -36,126 +38,106 @@ class BaseSimulation(object):
 
         # Setup logging dir
         self.sim_dir = logger_dir
-        self.logger = setup_logger(__name__, self.sim_dir+'sim.log')
+        if not os.path.exists(self.sim_dir):
+            os.mkdir(self.sim_dir)
+        self.sim_log_name = os.path.join(self.sim_dir, "sim.log")
+        self.logger = setup_logger(__name__,  self.sim_log_name)
 
         # Init the environment
         self.env = Environment()
-        # Init map with peers
-        if full_config:
-            # Init from the config file, Load config and create peers.
-            # Read peer types
-            #self.peer_map = full_config peer_types
-            # peer type and service
-            # peer type - Peer
 
-
-
-            pass
-        else:
-            # Load defaults
-            pass
-
-
-        self.peers = dict()
-        self.peer_factory = PeerFactory()
-
-        # Load Locations
-
-        if not locations:
-            # Load defaults
-            pass
+        # Init locations and latencies
         if type(locations) == str:
             # yaml file - try to load
             self._location_generator = load_config_from_yaml(locations).latencies
+            self.all_locations = load_config_from_yaml(locations).locations
         else:
+            # Load location generator
             self._location_generator = locations.latencies
+            self.all_locations = locations.locations
 
         # Generate location to store in cache
-        self.locations_cache = {} # self._load_cache(self._location_generator, self.cash_val)
-        # Create peer factory from config file
-        # ConfigLoader.load_services()
-        #
-        # self.locations = ConfigLoader.load_latencies()
-        # self.env.locations = self.locations
+        self.locations = Cache(self._location_generator, self.cash_val)
 
-        # self.logger.info("Start simulation")
+        # Parse topology
+        self.peers_types = {}
+        self.topology = {}
+        self.types_peers = {}
+        if type(topology) == dict:
+            # The map with form peer_id -> {'type': ..., other_peer ids}
+            self.peers = {p: None for p in topology.keys()}
+            for k in topology.keys():
+                self.peers_types[k] = topology.get(k).get('type')
+                self.topology[k] = topology.get(k).get('neighbors')
+        elif type(topology) == nx.Graph:
+            # The graph with topology of peer_ids with peer attributes
+            self.peers_types = nx.get_node_attributes(topology, 'type')
+            self.topology = topology
+            self.peers = {p: None for p in topology.nodes()}
 
+        # map type -> set of peers
+        self.types_peers = {k: {j for j, _ in list(v)}
+                            for k, v in groupby(self.peers_types.items(), lambda x: x[1])}
 
-    def _load_cache(self, generator, cache_num, subfield = None):
+        # Process given peer_types_map
+        self.peer_types_configs = peer_types_map
 
-        if subfield:
-            return [generator.get()[subfield] for i in range(cache_num)]
-        else:
-            return [generator.get() for i in range(cache_num)]
+        self.peer_factory = PeerFactory()
+        # Create peers for this simulation
+        for p in list(self.peers.keys()):
+            peer_type_name = self.peers_types[p]
+            peer_type = self.peer_types_configs[peer_type_name]
+            self.peers[p] = self.peer_factory.create_peer(self, peer_type_name, peer_type, p)
 
+        # Bootstrap connect peers
+        # If there are connections =>
+        for p in list(self.peers.keys()):
+            if self.topology[p]:
+                for c in self.topology[p]:
+                    self.peers[p].bootstrap_connect(self.peers[c])
+            else:
+                # Connect to bootstrap server
+                if 'bootstrap' not in self.types_peers:
+                    # No bootstrap configuration is known - use default bootstrap
+                    use_p2p = kwargs.get('bootstrap_p2p', True)
+                    num_bootstrap = kwargs.get('num_bootstrap', 1)
+                    self._init_default_bootstrap_servers(self.all_locations, num=num_bootstrap,
+                                                         active_p2p=use_p2p)
+                b_s = random.choice(list(self.types_peers['bootstrap']))
+                boot_peer = self.peers[b_s]
+                self.peers[p].bootstrap_connect(boot_peer)
 
-
-
-    def add_peer_type(self):
-        pass
-
-    def get_latency_delay(self, origin: str, destination: str, n=1):
+    def get_latency_delay(self, origin: str, destination: str):
         """
         Get latency delay according to the latency distribution
-        :param locations: map that contains distance between locations (in ms)
         :param origin: from location
         :param destination: to location
-        :param n: the size of the latency vector
-        :return: list of latencies
         """
-        try:
-            locations = self.locations_cache.pop()
-        except IndexError:
-            self.locations_cache = self._load_cache(self._location_generator, self.cash_val)
-            self.locations_cache)
-            locations = self.locations_cache.pop()
+        return self.locations.fetch(origin, destination)
 
+    def _add_peer(self, p):
+        self.peers[p.peer_id] = p
+        self.peers_types[p.peer_id] = p.peer_type
+        if p.peer_type not in self.types_peers:
+            self.types_peers[p.peer_type] = set()
+        self.types_peers[p.peer_type].add(p.peer_id)
 
-
-
-        if origin not in locations or destination not in self.locations[origin]:
-            raise Exception("Location connection not known")
-
-        distribution = self.locations[origin][destination]
-        if type(distribution) == float or type(distribution) == int:
-            return distribution if n == 1 else [distribution] * n
-        return distribution.generate(n)
-
-    def init_bootstrap_servers(self, num=1):
+    def _init_default_bootstrap_servers(self, locations, num=1, active_p2p=False):
         """
         Initialize bootstrap servers: create bootstrap peers and start them immediately.
         :param num: number of servers
         """
-        self.logger.info("Init bootstrap servers")
+        self.logger.warning("Init default bootstrap servers")
+        bpt = get_default_bootstrap_type(locations, active_p2p=active_p2p)
+
         for i in range(num):
-            p = self.peer_factory.create_peer(self.env, 'bootstrap')
-            self.bootstrap_peers.append(p)
-            # Bootstrap servers start immediately
-            p.start_all_runners()
+            p = self.peer_factory.create_peer(self, 'bootstrap', bpt)
+            self._add_peer(p)
 
     def get_peers_names(self, peer_type):
         if peer_type not in self.peers:
             return None
         return (p.name for p in self.peers[peer_type])
-
-    def add_peer_service_with_conf(self, peer_type: str, service_class, service_config_class, config):
-        """
-        Add peer service for the type of peer. Load configuration that might contain distribution samples.
-        :param peer_type: type of the peer
-        :param service_class: Class with a service implementation
-        :param service_config_class: configuration dataclass for the service class
-        :param config: the actual configuration for peer as a dictionary
-        """
-        self.peer_factory.add_service_with_conf(peer_type, service_class, service_config_class, config)
-
-    def add_peer_service(self, peer_type, service_class, service_config):
-        """
-        Add peer service for the type of peer
-        :param peer_type: type of the peer
-        :param service_class: Class with a service implementation
-        :param service_config: configuration object for this service
-        """
-        self.peer_factory.add_service(peer_type, service_class, service_config)
 
     def start_all_peers(self):
         """
@@ -165,56 +147,36 @@ class BaseSimulation(object):
             for p in self.peers[t]:
                 p.start_all_runners()
 
-    def add_peers(self, peer_num: int, peer_type: str = 'basic'):
-        """
-        Create and add peers to the simulation environment.
-        Peers will connect to a random bootstrap server and start all services.
-        :param peer_num: number of peers to create
-        :param peer_type: Type of peers to create
-        """
-        self.logger.info("Creating %s peers of type %s", peer_num, peer_type)
-        for i in range(peer_num):
-            p = self.peer_factory.create_peer(self.env, peer_type)
-            # Select random bootstrap server
-            bootstrap_server = random.choice(self.bootstrap_peers)
-            p.bootstrap_connect(bootstrap_server)
-            if peer_type not in self.peers:
-                self.peers[peer_type] = list()
-            self.peers[peer_type].append(p)
-
     def get_graph(self, include_bootstrap_peers=False):
         G = nx.Graph()
-        current_peers = [p for peer_type in self.peers.values() for p in peer_type]
-        if include_bootstrap_peers:
-            current_peers.extend(self.bootstrap_peers)
-        for peer in current_peers:
-            G.add_node(peer.name)
+        for p in self.peers_types.keys():
+            if not include_bootstrap_peers and self.peers_types[p] == 'bootstrap':
+                continue
+            G.add_node(int(p))
+            peer = self.peers[p]
             for other, cnx in peer.connections.items():
-                if include_bootstrap_peers or not str.startswith(other.name, 'bootstrap'):
-                    G.add_edge(peer.name, other.name, weight=cnx.bandwidth)
+                if include_bootstrap_peers or other.peer_type != 'bootstrap':
+                    G.add_edge(int(p), int(other.peer_id), weight=cnx.bandwidth)
+        nx.set_node_attributes(G, self.peers_types, 'type')
         return G
 
     def avg_bandwidth(self):
         bws = []
-        for peer in self.peers:
+        for peer in self.peers.items():
             for c in peer.connections.values():
                 bws.append(c.bandwidth)
         return sum(bws) / len(bws)
 
     def median_bandwidth(self):
         bws = []
-        for peer in self.peers:
+        for peer in self.peers.items():
             for c in peer.connections.values():
                 bws.append(c.bandwidth)
         bws.sort()
         return bws[int(len(bws) / 2)]
 
-    def run(self, until=None):
+    def run(self, until):
         self.env.run(until)
 
     def stop(self):
         self.env.exit(0)
-
-class P2PSimulation(Simulation):
-
-

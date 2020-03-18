@@ -1,9 +1,12 @@
 import inspect
-import yaml
+from ast import literal_eval as make_tuple
+from collections import namedtuple
+from random import choices
 
 import scipy.stats
-from ast import literal_eval as make_tuple
-from random import choices
+import yaml
+
+PeerType = namedtuple('PeerType', ('config', 'service_map'), defaults=(None, {}))
 
 
 class Dist:
@@ -13,14 +16,11 @@ class Dist:
         self.params = params
 
     def to_repr(self):
-        return {'name': self.name, 'params': str(self.params)}
+        return {self.__class__.__name__: {'name': self.name, 'params': str(self.params)}}
 
     @classmethod
     def from_repr(cls, yaml_dict):
         return cls(**yaml_dict)
-
-    # def __str__(self):
-    #    return str({'Dist': {'name': self.name, 'params': str(self.params)}})
 
     def generate(self, n=1):
         """
@@ -39,6 +39,12 @@ class Dist:
         param = make_tuple(self.params) if type(self.params) == str else self.params
         res = dist.rvs(*param[:-2], loc=param[-2], scale=param[-1], size=n)
         return res if n != 1 else res[0]
+
+    def get(self):
+        return self.generate(1)
+
+
+class DistAttr(Dist):
 
     def __get__(self, inst, obj):
         return self.generate(1)
@@ -65,7 +71,7 @@ class Wrap:
         return self._wrap.generate(n)
 
 
-class ConfigWrap:
+class ConfigAttr:
     def __init__(self, cls):
         self.cls = cls
 
@@ -81,6 +87,11 @@ class ConfigWrap:
 
 class Config:
     @classmethod
+    def save_to_yaml(cls, yaml_file):
+        with open(yaml_file, 'w') as s:
+            yaml.dump(cls.repr(), s)
+
+    @classmethod
     def _serialize(cls, val):
         if isinstance(val, (tuple, list, dict)):
             if type(val) == dict:
@@ -88,7 +99,7 @@ class Config:
             else:
                 return list(cls._serialize(k) for k in val)
         else:
-            if type(val) == Wrap or type(val) == ConfigWrap:
+            if type(val) == Dist or type(val) == ConfigAttr:
                 return val.to_repr()
             else:
                 return val
@@ -97,7 +108,7 @@ class Config:
     def _deserialize(cls, val):
         if type(val) == dict:
             if 'Dist' in val:
-                return Wrap(Dist(**val['Dist']))
+                return Dist(**val['Dist'])
             else:
                 return {k: cls._deserialize(v) for k, v in val.items()}
         else:
@@ -124,13 +135,13 @@ class Config:
             return {k: cls._get(v) for k, v in val.items()}
         elif isinstance(val, list):
             return [cls._get(v) for v in val]
-        if type(val) == Wrap or type(val) == ConfigWrap:
+        if type(val) == Dist or type(val) == ConfigAttr:
             return val.get()
         else:
             return val
 
     @classmethod
-    def get(cls, n=1):
+    def get(cls):
         full_dict = dict()
         for i in inspect.getmembers(cls):
             if not i[0].startswith('_') and not callable(i[1]):
@@ -145,43 +156,11 @@ class Config:
             setattr(cls, k, v)
 
 
-class PeerNameGenerator:
-
-    def __init__(self):
-        self.peer_indexes = dict()  # type -> number map
-
-    def generate_name(self, peer_type: str):
-        if peer_type not in self.peer_indexes:
-            # New peer type => Init
-            self.peer_indexes[peer_type] = 0
-        self.peer_indexes[peer_type] += 1
-        return peer_type + "_" + str(self.peer_indexes[peer_type])
-
-
-class ConfigLoader:
-
-    @staticmethod
-    def load_services():
-        with open('p2psimpy/input/config.yml') as s:
-            return yaml.safe_load(s)
-
-    @staticmethod
-    def load_latencies():
-        with open('p2psimpy/input/locations.yml') as s:
-            return list(yaml.safe_load_all(s))[1]
-
-
 def load_config_from_yaml(yaml_file):
     class NewConfig(Config): pass
 
     with open(yaml_file) as s:
-        raw = yaml.load(s)
+        raw = yaml.safe_load(s)
     cls_name = list(raw.keys())[0]
     NewConfig.from_repr(cls_name, raw[cls_name])
     return NewConfig
-
-
-def from_config(cls, name_gen: PeerNameGenerator, peer_type: str, config: dict):
-    params = [name_gen.generate_name(peer_type)]
-    params.extend([load_config_parameter(config[field]) for field in ('location', 'bandwidth_ul', 'bandwidth_dl')])
-    return cls(*params)

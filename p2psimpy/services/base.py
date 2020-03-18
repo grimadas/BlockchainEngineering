@@ -1,6 +1,12 @@
+from p2psimpy.logger import setup_logger
+
+
 class BaseService(object):
     def __init__(self, peer,  **kwargs):
         self.peer = peer
+        self.__dict__.update(kwargs)
+
+        self.logger = setup_logger(repr(self), peer.log_name, mode='a')
 
     @property
     def env(self):
