@@ -6,7 +6,7 @@ class BaseService(object):
         self.peer = peer
         self.__dict__.update(kwargs)
 
-        self.logger = setup_logger(repr(self), peer.log_name, mode='a')
+        self.logger = peer.logger
 
     @property
     def env(self):

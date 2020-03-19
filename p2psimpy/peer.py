@@ -30,8 +30,12 @@ class Peer:
         self.__dict__.update(kwargs)
 
         peer_repr = repr(self)
-        self.log_name = os.path.join(sim.sim_dir, peer_repr + ".log")
-        self.logger = setup_logger(peer_repr, self.log_name)
+        if sim.sim_dir:
+            self.log_name = os.path.join(sim.sim_dir, peer_repr + ".log")
+            self.logger = setup_logger(peer_repr, self.log_name)
+        else:
+            self.log_name = None
+            self.logger = None
 
         # Message queue for the received messages
         self.msg_queue = Store(self.env)
@@ -84,7 +88,8 @@ class Peer:
         :param other: peer object
         """
         if not self.is_connected(other):
-            self.logger.info("%s: Connecting to %s", self.env.now, repr(other))
+            if self.logger:
+                self.logger.info("%s: Connecting to %s", self.env.now, repr(other))
             self.connections[other] = Connection(self, other)
             # We create bilateral connection
             if not other.is_connected(self):
@@ -96,7 +101,8 @@ class Peer:
         :param other: peer object
         """
         if self.is_connected(other):
-            self.logger.warning("%s: Breaking connection with %s", self.env.now, repr(other))
+            if self.logger:
+                self.logger.warning("%s: Breaking connection with %s", self.env.now, repr(other))
             del self.connections[other]
             if other.is_connected(self):
                 other.disconnect(self)
@@ -111,10 +117,12 @@ class Peer:
         """
         msg_type =  type(msg)
         msg_sender =  msg.sender
-        self.logger.info("%s: Received message <%s> from %s", self.env.now, repr(msg), msg_sender)
+        if self.logger:
+            self.logger.info("%s: Received message <%s> from %s", self.env.now, repr(msg), msg_sender)
 
         if msg_type not in self.mh_map:
-            self.logger.error("No handler for the message %s", msg_type)
+            if self.logger:
+                self.logger.error("No handler for the message %s", msg_type)
             raise Exception("No handler for the message %s at peer %s", msg_type, repr(self))
         for service_id in self.mh_map[msg_type]:
             self.handlers[service_id].handle_message(msg)
@@ -126,10 +134,12 @@ class Peer:
         """
         # fire and forget
         if receiver not in self.connections:
-            self.logger.error("%s: Sending message to a not connected peer %s",
-                              self.env.now, repr(receiver))
+            if self.logger:
+                self.logger.error("%s: Sending message to a not connected peer %s",
+                                  self.env.now, repr(receiver))
             raise Exception("Not connected")
-        self.logger.info("%s: Sending message <%s> to %s", self.env.now, repr(msg), receiver)
+        if self.logger:
+            self.logger.info("%s: Sending message <%s> to %s", self.env.now, repr(msg), receiver)
         self.connections[receiver].send(msg)
 
     def _get_connections(self, exclude_bootstrap=True, except_set: set = None, except_type: set = None):
@@ -181,7 +191,8 @@ class Peer:
 
     def store(self, storage_name, msg_id, msg):
         if storage_name not in self.storage:
-            self.logger.error("No storage %s found", storage_name)
+            if self.logger:
+                self.logger.error("No storage %s found", storage_name)
             raise Exception("No storage %s found", storage_name)
         self.storage[storage_name].add(msg_id, msg)
 

@@ -24,10 +24,10 @@ class BaseDisruption(BaseRunner):
         self.availability = kwargs.pop('availability', 0.9)
 
     def disruption_start(self):
-        pass
+        raise NotImplemented
 
     def disruption_end(self):
-        pass
+        raise NotImplemented
 
     def probe_status_change(self):
         if not self.is_disrupted:

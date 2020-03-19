@@ -71,7 +71,8 @@ class BaseConnectionManager(BaseHandler, BaseRunner):
             if other not in self.last_seen:
                 self.last_seen[other] = now  # assume it was recently added
             elif now - self.last_seen[other] > self.max_silence:
-                self.logger.warning("%s: %s not responding", self.env.now, repr(other))
+                if self.logger:
+                    self.logger.warning("%s: %s not responding", self.env.now, repr(other))
                 self.peer.disconnect(other)
 
     @property
@@ -167,7 +168,8 @@ class P2PConnectionManager(BaseConnectionManager):
             for bw, other in sorted_peers:
                 start_time = self.peer.connections[other].start_time
                 if self.env.now - start_time > self.min_keep_time:
-                    self.logger.warning("%s: %s too slow", self.env.now, repr(other))
+                    if self.logger:
+                        self.logger.warning("%s: %s too slow", self.env.now, repr(other))
                     self.peer.disconnect(other)
                     self.disconnected_peers.add(other)
                     break
@@ -176,8 +178,9 @@ class P2PConnectionManager(BaseConnectionManager):
         # CASE: too few peers
         if len(self.connected_peers) < self.min_peers:
             needed = self.min_peers - len(self.connected_peers)
-            self.logger.warning("%s: Not enough peers, fetching more (%s, %s)",
-                                self.env.now, len(self.connected_peers), self.min_peers)
+            if self.logger:
+                self.logger.warning("%s: Not enough peers, fetching more (%s, %s)",
+                                    self.env.now, len(self.connected_peers), self.min_peers)
             candidates = self.peer_candidates
             if len(candidates) < needed:
                 self.peer.gossip(RequestPeers(self.peer), self.peer_batch_request, exclude_bootstrap=False)
@@ -186,8 +189,9 @@ class P2PConnectionManager(BaseConnectionManager):
 
         # CASE: too many peers
         if len(self.connected_peers) > self.max_peers:
-            self.logger.warning("%s: Too many peers connected (%s, %s)",
-                                self.env.now, len(self.connected_peers), self.max_peers)
+            if self.logger:
+                self.logger.warning("%s: Too many peers connected (%s, %s)",
+                                    self.env.now, len(self.connected_peers), self.max_peers)
             num = max(0, len(self.connected_peers) - self.max_peers)
             for i in range(num):
                 self.disconnect_slowest_peer()

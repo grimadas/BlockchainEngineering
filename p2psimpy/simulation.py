@@ -9,8 +9,6 @@ from p2psimpy.config import load_config_from_yaml
 from p2psimpy.defaults import get_default_bootstrap_type
 from p2psimpy.logger import setup_logger
 from p2psimpy.peer_factory import PeerFactory
-from p2psimpy.services.connection_manager import BaseConnectionManager, P2PConnectionManager
-from p2psimpy.services.disruption import Downtime, Slowdown
 from p2psimpy.utils import Cache
 
 
@@ -18,10 +16,9 @@ class BaseSimulation(object):
     """
     Main class to run simulation.
     """
-    known_services = [BaseConnectionManager, P2PConnectionManager, Downtime, Slowdown]
     cash_val = 50
 
-    def __init__(self, locations, topology, peer_types_map, logger_dir='logs', **kwargs):
+    def __init__(self, locations, topology, peer_types_map, enable_logger=False, logger_dir='logs', **kwargs):
         """
             Initialize simulation with known locations, topology and services.
             :param locations: Known locations. Either a yaml file_name, or a Config class.
@@ -37,11 +34,15 @@ class BaseSimulation(object):
         self.sim_time = kwargs.get('sim_time', None)
 
         # Setup logging dir
-        self.sim_dir = logger_dir
-        if not os.path.exists(self.sim_dir):
-            os.mkdir(self.sim_dir)
-        self.sim_log_name = os.path.join(self.sim_dir, "sim.log")
-        self.logger = setup_logger(__name__,  self.sim_log_name)
+        if enable_logger or logger_dir != 'logs':
+            self.sim_dir = logger_dir
+            if not os.path.exists(self.sim_dir):
+                os.mkdir(self.sim_dir)
+            self.sim_log_name = os.path.join(self.sim_dir, "sim.log")
+            self.logger = setup_logger(__name__, self.sim_log_name, clean_up=True)
+        else:
+            self.sim_dir = None
+            self.logger = None
 
         # Init the environment
         self.env = Environment()
@@ -127,7 +128,8 @@ class BaseSimulation(object):
         Initialize bootstrap servers: create bootstrap peers and start them immediately.
         :param num: number of servers
         """
-        self.logger.warning("Init default bootstrap servers")
+        if self.logger:
+            self.logger.warning("Init default bootstrap servers")
         bpt = get_default_bootstrap_type(locations, active_p2p=active_p2p)
 
         for i in range(num):
