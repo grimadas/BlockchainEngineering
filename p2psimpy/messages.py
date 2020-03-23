@@ -46,3 +46,13 @@ class PeerList(BaseMessage):
 class Hello(BaseMessage):
     """Offer a peer to connect"""
     pass
+
+
+class GossipMessage(BaseMessage):
+
+    __slots__ = ('sender', 'data', 'ttl')
+    size = 1024
+    
+    def __init__(self, sender, data, ttl):
+        super().__init__(sender, data)
+        self.ttl = ttl

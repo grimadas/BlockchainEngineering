@@ -32,10 +32,9 @@ class Connection:
         """
 
         def _transfer():
-            bytes = msg.size
+            num_bytes = msg.size
             sender = msg.sender
-            delay = bytes / self.sender.bandwidth_ul
-            delay += bytes / self.receiver.bandwidth_dl
+            delay = num_bytes / self.sender.bandwidth_ul
             delay += self.latency / 2
             yield self.env.timeout(delay)
             if self.receiver.is_connected(sender) or connect:

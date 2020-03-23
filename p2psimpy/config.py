@@ -157,10 +157,15 @@ class Config:
 
 
 def load_config_from_yaml(yaml_file):
-    class NewConfig(Config): pass
-
     with open(yaml_file) as s:
         raw = yaml.safe_load(s)
-    cls_name = list(raw.keys())[0]
-    NewConfig.from_repr(cls_name, raw[cls_name])
+    return load_config_from_repr(raw)
+
+def load_config_from_repr(raw_repr):
+    class NewConfig(Config): pass
+
+    cls_name = list(raw_repr.keys())[0]
+    NewConfig.from_repr(cls_name, raw_repr[cls_name])
     return NewConfig
+
+

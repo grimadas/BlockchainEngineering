@@ -66,8 +66,13 @@ class Peer:
 
     def run(self):
         while True:
-            # Peer is online and listens to the messages received
+            # Receive message and 
             msg = yield self.msg_queue.get()
+            num_bytes = msg.size
+            sender = msg.sender
+            delay = num_bytes / self.bandwidth_dl
+            yield self.env.timeout(delay)
+            
             self.receive(msg)
 
     def is_connected(self, other):
@@ -117,15 +122,16 @@ class Peer:
         """
         msg_type =  type(msg)
         msg_sender =  msg.sender
-        if self.logger:
-            self.logger.info("%s: Received message <%s> from %s", self.env.now, repr(msg), msg_sender)
-
-        if msg_type not in self.mh_map:
+        if self.online:
             if self.logger:
-                self.logger.error("No handler for the message %s", msg_type)
-            raise Exception("No handler for the message %s at peer %s", msg_type, repr(self))
-        for service_id in self.mh_map[msg_type]:
-            self.handlers[service_id].handle_message(msg)
+                self.logger.info("%s: Received message <%s> from %s", self.env.now, repr(msg), msg_sender)
+
+            if msg_type not in self.mh_map:
+                if self.logger:
+                    self.logger.error("No handler for the message %s", msg_type)
+                raise Exception("No handler for the message %s at peer %s", msg_type, repr(self))
+            for service_id in self.mh_map[msg_type]:
+                self.handlers[service_id].handle_message(msg)
 
     def send(self, receiver, msg):
         """

@@ -5,7 +5,7 @@ from itertools import groupby
 import networkx as nx
 from simpy import Environment
 
-from p2psimpy.config import load_config_from_yaml
+from p2psimpy.config import load_config_from_yaml, load_config_from_repr, PeerType
 from p2psimpy.defaults import get_default_bootstrap_type
 from p2psimpy.logger import setup_logger
 from p2psimpy.peer_factory import PeerFactory
@@ -18,7 +18,8 @@ class BaseSimulation(object):
     """
     cash_val = 50
 
-    def __init__(self, locations, topology, peer_types_map, enable_logger=False, logger_dir='logs', **kwargs):
+    def __init__(self, locations, topology, peer_types_map,
+                 servs_impl=None, enable_logger=False, logger_dir='logs', **kwargs):
         """
             Initialize simulation with known locations, topology and services.
             :param locations: Known locations. Either a yaml file_name, or a Config class.
@@ -46,6 +47,9 @@ class BaseSimulation(object):
 
         # Init the environment
         self.env = Environment()
+
+        self._locs = locations
+        self._top = topology
 
         # Init locations and latencies
         if type(locations) == str:
@@ -80,8 +84,21 @@ class BaseSimulation(object):
         self.types_peers = {k: {j for j, _ in list(v)}
                             for k, v in groupby(self.peers_types.items(), lambda x: x[1])}
 
-        # Process given peer_types_map
+        if servs_impl:
+            # Load services 
+            for type_name, peer_type in peer_types_map.items():
+                s_map = peer_types_map[type_name].service_map
+                new_map = dict() 
+                for k in s_map.keys():
+                    if type(k) == str:
+                        new_map[servs_impl[k]] = s_map[k] if type(s_map) == dict else None
+                    else:
+                        new_map[k] = s_map[k] if type(s_map) == dict else None
+                peer_types_map[type_name] = PeerType(peer_types_map[type_name].config, new_map)
+
+        self._servs = peer_types_map
         self.peer_types_configs = peer_types_map
+        
 
         self.peer_factory = PeerFactory()
         # Create peers for this simulation
@@ -115,6 +132,74 @@ class BaseSimulation(object):
         :param destination: to location
         """
         return self.locations.fetch(origin, destination)
+
+    def save_experiment(self, expr_dir='expr', include_module_classes=False):
+        import yaml
+        # Save locations 
+        if not os.path.exists(expr_dir):
+            os.mkdir(expr_dir)
+        loc_file = os.path.join(expr_dir, "locations.yaml")
+        top_file = os.path.join(expr_dir, 'topology.yaml')
+        serv_file = os.path.join(expr_dir, 'services.yaml')
+
+        self._locs.save_to_yaml(loc_file)
+        if type(self._top) == dict:
+            # Save dict
+            with open(top_file, 'w') as s:
+                yaml.dump(self._top, s)
+        else:
+            # This is networkx file 
+            nx.write_yaml(self._top, top_file)
+
+        dump_serv = {}
+        services = dict()
+        for k, pt in self._servs.items():
+            new_pt = pt.config.repr()
+            if type(pt.service_map) == dict:
+                serv = dict()
+                for sk, sc in pt.service_map.items():
+                    if sc:
+                        serv[sk.__name__] = sc.repr()
+                    else:
+                        serv[sk.__name__] = sc
+                    services[sk.__name__] = sk if include_module_classes else None
+            else:
+                serv = tuple(k.__name__ for k in pt.service_map)
+                if include_module_classes:
+                    services.update({k.__name__: k for k in pt.service_map})
+                else:
+                    services.update({k.__name__: None for k in pt.service_map})
+
+            dump_serv[k] = PeerType(new_pt, serv)
+
+        with open(serv_file, 'w') as s:
+            yaml.dump([dump_serv, services], s)
+
+    @staticmethod
+    def load_experiment(expr_dir='expr', load_modules=False):
+        import yaml
+        loc_file = os.path.join(expr_dir, "locations.yaml")
+        top_file = os.path.join(expr_dir, 'topology.yaml')
+        serv_file = os.path.join(expr_dir, 'services.yaml')
+
+        locs = load_config_from_yaml(loc_file)
+        with open(top_file) as s:
+            top = yaml.load(s)
+
+        with open(serv_file) as s:
+            servs, services = yaml.load(s)
+        for sk, pt in list(servs.items()):
+
+            peer_config = load_config_from_repr(pt.config)
+            if type(pt.service_map) == dict:
+                new_services = dict()
+                for k, v in pt.service_map.items():
+                    k = services[k] if load_modules else k
+                    new_services[k] = load_config_from_repr(v) if v else v
+            else:
+                new_services = [services[k] for k in pt.service_map] if load_modules else pt.service_map
+            servs[sk] = PeerType(peer_config, new_services)
+        return locs, top, servs, services
 
     def _add_peer(self, p):
         self.peers[p.peer_id] = p
@@ -151,15 +236,20 @@ class BaseSimulation(object):
 
     def get_graph(self, include_bootstrap_peers=False):
         G = nx.Graph()
+        online_map = dict()
         for p in self.peers_types.keys():
             if not include_bootstrap_peers and self.peers_types[p] == 'bootstrap':
                 continue
             G.add_node(int(p))
             peer = self.peers[p]
-            for other, cnx in peer.connections.items():
-                if include_bootstrap_peers or other.peer_type != 'bootstrap':
-                    G.add_edge(int(p), int(other.peer_id), weight=cnx.bandwidth)
+            if peer.online:
+                for other, cnx in peer.connections.items():
+                    if other.online and (include_bootstrap_peers or other.peer_type != 'bootstrap'):
+                        G.add_edge(int(p), int(other.peer_id), weight=cnx.bandwidth)
+            online_map[int(p)] = peer.online
+
         nx.set_node_attributes(G, self.peers_types, 'type')
+        nx.set_node_attributes(G, online_map, 'is_online')
         return G
 
     def avg_bandwidth(self):

@@ -8,7 +8,6 @@ class BaseDisruption(BaseRunner):
     """
     Disruption in the network
     """
-    is_disrupted = False
 
     def __init__(self, peer: Peer, **kwargs):
         """
@@ -22,6 +21,7 @@ class BaseDisruption(BaseRunner):
         self.interval = kwargs.pop('interval', 10)
         self.mtbf = kwargs.pop('mtbf', 10000)
         self.availability = kwargs.pop('availability', 0.9)
+        self.is_disrupted = False
 
     def disruption_start(self):
         raise NotImplemented
@@ -36,7 +36,7 @@ class BaseDisruption(BaseRunner):
                 self.disruption_start()
         else:
             avg_disruption_duration = self.mtbf * (1 - self.availability)
-            if random.random() > self.interval / avg_disruption_duration:
+            if random.random() < self.interval / avg_disruption_duration:
                 self.is_disrupted = False
                 self.disruption_end()
 
@@ -56,10 +56,10 @@ class Downtime(BaseDisruption):
 
     def disruption_start(self):
         self.last_peers = self.peer.connections.keys()
-        self.peer.active = False
+        self.peer.online = False
 
     def disruption_end(self):
-        self.peer.active = True
+        self.peer.online = True
         for other in self.last_peers:
             self.peer.bootstrap_connect(other)
 
