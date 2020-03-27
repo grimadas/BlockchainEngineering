@@ -41,6 +41,19 @@ class BaseRunner(BaseService):
         """The main running function"""
         raise NotImplementedError
 
+class ScheduledRunner(BaseRunner):
+
+    def next(self):
+        raise NotImplementedError
+
+    def run_script(self):
+        raise NotImplementedError
+
+    def run(self):
+        while self.next():
+            self.run_script()
+            
+
 
 class MockHandler(BaseHandler):
     """

@@ -9,7 +9,7 @@ import yaml
 PeerType = namedtuple('PeerType', ('config', 'service_map'), defaults=(None, {}))
 
 
-class Dist:
+class Dist(object):
 
     def __init__(self, name: str, params):
         self.name = name
@@ -17,6 +17,12 @@ class Dist:
 
     def to_repr(self):
         return {self.__class__.__name__: {'name': self.name, 'params': str(self.params)}}
+
+    def __str__(self):
+        return self.__class__.__name__ + ": "+str(self.name)+ str(self.params) 
+
+    def __repr__(self):
+        return self.__class__.__name__ + ": "+str(self.name)+ str(self.params) 
 
     @classmethod
     def from_repr(cls, yaml_dict):
@@ -43,47 +49,10 @@ class Dist:
     def get(self):
         return self.generate(1)
 
-
 class DistAttr(Dist):
 
-    def __get__(self, inst, obj):
-        return self.generate(1)
-
-
-class Wrap:
-    def __init__(self, cls):
-        self._wrap = cls
-
-    def to_repr(self):
-        return {self._wrap.__class__.__name__: self._wrap.to_repr()}
-
-    @classmethod
-    def from_repr(cls, yaml_dict):
-        return cls(**yaml_dict)
-
-    def __str__(self):
-        return str(self._wrap)
-
     def get(self):
-        return self._wrap.__get__(None, None)
-
-    def generate(self, n=1):
-        return self._wrap.generate(n)
-
-
-class ConfigAttr:
-    def __init__(self, cls):
-        self.cls = cls
-
-    def to_repr(self):
-        return self.cls.repr()
-
-    def __str__(self):
-        return str(self.cls.repr())
-
-    def get(self):
-        return self.cls.get()
-
+        return Dist(self.name, self.params)
 
 class Config:
     @classmethod
@@ -98,17 +67,18 @@ class Config:
                 return {cls._serialize(k): cls._serialize(v) for k, v in val.items()}
             else:
                 return list(cls._serialize(k) for k in val)
+        elif isinstance(val, Dist):
+            return val.to_repr()
         else:
-            if type(val) == Dist or type(val) == ConfigAttr:
-                return val.to_repr()
-            else:
-                return val
+            return val
 
     @classmethod
     def _deserialize(cls, val):
         if type(val) == dict:
             if 'Dist' in val:
                 return Dist(**val['Dist'])
+            elif 'DistAttr' in val:
+                return DistAttr(**val['DistAttr'])
             else:
                 return {k: cls._deserialize(v) for k, v in val.items()}
         else:
@@ -129,13 +99,20 @@ class Config:
         main.update(cls.get_attr_repr())
         return root
 
+    def __str__(self):
+        return str(self.repr())
+
+    def __repr__(self):
+        return str(self.repr())
+
+
     @classmethod
     def _get(cls, val):
         if type(val) == dict:
             return {k: cls._get(v) for k, v in val.items()}
         elif isinstance(val, list):
             return [cls._get(v) for v in val]
-        if type(val) == Dist or type(val) == ConfigAttr:
+        if isinstance(val, Dist):
             return val.get()
         else:
             return val
@@ -152,7 +129,8 @@ class Config:
     def from_repr(cls, cls_name, yaml_dict):
         cls.__name__ = cls_name
         cls.__qualname__ = cls_name
-        for k, v in cls._deserialize(yaml_dict).items():
+        val = cls._deserialize(yaml_dict)
+        for k, v in val.items():
             setattr(cls, k, v)
 
 
@@ -167,5 +145,5 @@ def load_config_from_repr(raw_repr):
     cls_name = list(raw_repr.keys())[0]
     NewConfig.from_repr(cls_name, raw_repr[cls_name])
     return NewConfig
-
+    
 

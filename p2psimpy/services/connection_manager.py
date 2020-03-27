@@ -24,7 +24,6 @@ class BaseConnectionManager(BaseHandler, BaseRunner):
         self.max_silence = kwargs.pop('max_silence', 3000)
         self.min_keep_time = kwargs.pop('min_keep_time', 3000)
 
-        self.last_seen = dict()  # a map: peer -> timestamp
         self.known_peers = set()  # All known peers
         self.disconnected_peers = set()  # Connected in past, now disconnected
 
@@ -42,7 +41,6 @@ class BaseConnectionManager(BaseHandler, BaseRunner):
         """
         Respond to the arriving messages
         """
-        self.last_seen[msg.sender] = self.env.now
         if isinstance(msg, Hello):
             self.recv_hello(msg)
         if isinstance(msg, Ping):
@@ -53,7 +51,7 @@ class BaseConnectionManager(BaseHandler, BaseRunner):
         ping peers that are connected
         """
         for other in self.peer.connections:
-            if self.env.now - self.last_seen.get(other, 0) > self.ping_interval:
+            if self.env.now - self.peer.last_seen.get(other, 0) > self.ping_interval:
                 self.peer.send(other, Ping(sender=self.peer))
 
     def recv_hello(self, msg):
@@ -68,9 +66,9 @@ class BaseConnectionManager(BaseHandler, BaseRunner):
     def disconnect_unresponsive_peers(self):
         now = self.env.now
         for other in list(self.connected_peers):
-            if other not in self.last_seen:
-                self.last_seen[other] = now  # assume it was recently added
-            elif now - self.last_seen[other] > self.max_silence:
+            if other not in self.peer.last_seen:
+                self.peer.last_seen[other] = now  # assume it was recently added
+            elif now - self.peer.last_seen[other] > self.max_silence:
                 if self.logger:
                     self.logger.warning("%s: %s not responding", self.env.now, repr(other))
                 self.peer.disconnect(other)

@@ -19,6 +19,9 @@ class Cache:
         self.num = cache_num
         self.symmetric = symmetric
 
+    def __call__(self, *args):
+        return self.fetch(*args)
+
     def fetch(self, *args):
         try:
             val = self._pop(*args)

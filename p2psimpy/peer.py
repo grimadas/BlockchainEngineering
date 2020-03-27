@@ -46,6 +46,7 @@ class Peer:
 
         # Known peers
         self.disconnect_callbacks = []
+        self.last_seen = dict()
 
         # Peer services
         self.handlers = {}  # Service.handle_message(self, msg) called on message
@@ -54,6 +55,10 @@ class Peer:
 
         # Storage
         self.storage = {}
+
+        # Monitoring services 
+        self.bytes_load = {} # Overhead on bytes per sec 
+        self.msg_count_load = {} # Msg per sec 
 
         # Start peer as it is created
         self.env.process(self.run())
@@ -120,9 +125,18 @@ class Peer:
         :param msg:
         :return:
         """
-        msg_type =  type(msg)
-        msg_sender =  msg.sender
         if self.online:
+            msg_type =  type(msg)
+            msg_sender =  msg.sender
+
+            # Monitor the overhead of the message size 
+            now_sec = int(self.env.now / 1000) 
+            self.bytes_load[now_sec] = self.bytes_load.get(now_sec, 0) + msg.size
+            self.msg_count_load[now_sec] = self.msg_count_load.get(now_sec, 0) + 1
+
+            # Update peer connection data
+            self.last_seen[msg_sender] = self.env.now
+
             if self.logger:
                 self.logger.info("%s: Received message <%s> from %s", self.env.now, repr(msg), msg_sender)
 
@@ -139,14 +153,15 @@ class Peer:
         If receiver is not connected will raise and exception
         """
         # fire and forget
-        if receiver not in self.connections:
+        if self.online:
+            if receiver not in self.connections:
+                if self.logger:
+                    self.logger.error("%s: Sending message to a not connected peer %s",
+                                      self.env.now, repr(receiver))
+                raise Exception("Not connected")
             if self.logger:
-                self.logger.error("%s: Sending message to a not connected peer %s",
-                                  self.env.now, repr(receiver))
-            raise Exception("Not connected")
-        if self.logger:
-            self.logger.info("%s: Sending message <%s> to %s", self.env.now, repr(msg), receiver)
-        self.connections[receiver].send(msg)
+                self.logger.info("%s: Sending message <%s> to %s", self.env.now, repr(msg), receiver)
+            self.connections[receiver].send(msg)
 
     def _get_connections(self, exclude_bootstrap=True, except_set: set = None, except_type: set = None):
         if except_set is None:
@@ -167,10 +182,15 @@ class Peer:
         :param except_peers: connected peers to exclude from gossip
         :param except_type: exclude from gossip type of peers
         """
+        if not self.online:
+            return None
         gossip_set = list(self._get_connections(exclude_bootstrap, except_peers, except_type))
+        selected = random.sample(gossip_set, min(f, len(gossip_set)))
 
-        for other in random.sample(gossip_set, min(f, len(gossip_set))):
+        for other in selected:
             self.send(other, msg)
+
+        return selected
 
     def broadcast(self, msg, exclude_bootstrap=True, except_set: set = None, except_type: set = None):
         """Send to all connected peers except given """
@@ -194,6 +214,9 @@ class Peer:
     def start_all_runners(self):
         for runner in self.runners.values():
             runner.start()
+
+    def get_storage(self, storage_name):
+        return self.storage.get(storage_name)
 
     def store(self, storage_name, msg_id, msg):
         if storage_name not in self.storage:

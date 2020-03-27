@@ -1,6 +1,7 @@
 import os
 import random
-from itertools import groupby
+
+from copy import deepcopy
 
 import networkx as nx
 from simpy import Environment
@@ -81,9 +82,12 @@ class BaseSimulation(object):
             self.peers = {p: None for p in topology.nodes()}
 
         # map type -> set of peers
-        self.types_peers = {k: {j for j, _ in list(v)}
-                            for k, v in groupby(self.peers_types.items(), lambda x: x[1])}
-
+        self.types_peers = {}
+        for k,v in self.peers_types.items():              
+            self.types_peers.setdefault(v, set()).add(k)
+        
+        self._servs = dict()
+        
         if servs_impl:
             # Load services 
             for type_name, peer_type in peer_types_map.items():
@@ -94,12 +98,13 @@ class BaseSimulation(object):
                         new_map[servs_impl[k]] = s_map[k] if type(s_map) == dict else None
                     else:
                         new_map[k] = s_map[k] if type(s_map) == dict else None
-                peer_types_map[type_name] = PeerType(peer_types_map[type_name].config, new_map)
+                self._servs[type_name] = PeerType(peer_types_map[type_name].config, new_map)
+        else:
+            self._servs = deepcopy(peer_types_map)
 
-        self._servs = peer_types_map
-        self.peer_types_configs = peer_types_map
         
-
+        self.peer_types_configs = self._servs
+        
         self.peer_factory = PeerFactory()
         # Create peers for this simulation
         for p in list(self.peers.keys()):
@@ -158,10 +163,11 @@ class BaseSimulation(object):
             if type(pt.service_map) == dict:
                 serv = dict()
                 for sk, sc in pt.service_map.items():
-                    if sc:
-                        serv[sk.__name__] = sc.repr()
-                    else:
+                    if not sc:
                         serv[sk.__name__] = sc
+                    else:
+                        serv[sk.__name__] = sc.repr()
+                        
                     services[sk.__name__] = sk if include_module_classes else None
             else:
                 serv = tuple(k.__name__ for k in pt.service_map)
