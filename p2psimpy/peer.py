@@ -52,6 +52,7 @@ class Peer:
         self.handlers = {}  # Service.handle_message(self, msg) called on message
         self.mh_map = {}  # Message -> Handler map
         self.runners = {}  # Peer service runners
+        self.mprt_map = {} # Message -> Pre-Receive Trigger
 
         # Storage
         self.storage = {}
@@ -71,14 +72,19 @@ class Peer:
 
     def run(self):
         while True:
-            # Receive message and 
+            # Receive message  
             msg = yield self.msg_queue.get()
             num_bytes = msg.size
             sender = msg.sender
             delay = num_bytes / self.bandwidth_dl
             yield self.env.timeout(delay)
-            
-            self.receive(msg)
+
+            # Trigger pre-receive Triggers if any
+            if msg.pre_task:
+                val = yield self.env.process(msg.pre_task(msg, self))
+            if not msg.pre_task or val:
+                self.receive(msg)
+            # Trigger post-receive if any
 
     def is_connected(self, other):
         return other in self.connections
@@ -118,6 +124,15 @@ class Peer:
                 other.disconnect(self)
             for cb in self.disconnect_callbacks:
                 cb(self, other)
+
+    def pre_receive(self, msg):
+        if msg_type not in self.mh_map:
+            if self.logger:
+                self.logger.error("No handler for the message %s", msg_type)
+            raise Exception("No handler for the message %s at peer %s", msg_type, repr(self))
+        for service_id in self.mh_map[msg_type]:
+            self.handlers[service_id].handle_message(msg)
+
 
     def receive(self, msg):
         """

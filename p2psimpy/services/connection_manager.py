@@ -130,6 +130,7 @@ class P2PConnectionManager(BaseConnectionManager):
             # self.sample_peers(self.config.peer_list_number))
             self.peer.send(msg.sender, reply)
 
+
     def recv_peerlist(self, msg):
         """
         Receive list of peers

@@ -9,12 +9,15 @@ import string
 class MessageProducer(BaseRunner):
 
     def __init__(self, peer, init_timeout=1000, msg_rate=5, 
-                 init_fanout=5, init_ttl=4):
+                 init_fanout=5, init_ttl=4, pre_task=None, post_task=None):
         super().__init__(peer)
         # calculate tx_interval
         self.init_timeout = init_timeout
         self.init_fanout = init_fanout
         self.init_ttl = init_ttl
+
+        self.pre_task = pre_task
+        self.post_task = post_task
         
         self.tx_interval = 1000 / msg_rate
         self.counter = 1 
@@ -29,7 +32,9 @@ class MessageProducer(BaseRunner):
         data = ''.join(random.choices(string.ascii_uppercase, k=20))
         msg_id = '_'.join((str(self.counter), str(self.peer.peer_id)))
         msg_ttl = self.init_ttl
-        msg = GossipMessage(self.peer, msg_id, data, msg_ttl)
+        msg = GossipMessage(self.peer, msg_id, data, msg_ttl, 
+            pre_task=self.pre_task, post_task=self.post_task)
+
         self.peer.gossip(msg, 
                          self.init_fanout)
         self.peer.store('msg_time', str(self.counter), self.peer.env.now)

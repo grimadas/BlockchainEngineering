@@ -49,6 +49,27 @@ class Dist(object):
     def get(self):
         return self.generate(1)
 
+class Func(object):
+
+    def __init__(self, func):
+        self.func = func
+
+    def to_repr(self):
+        return self.func
+
+    def __str__(self):
+        return repr(self.to_repr())
+
+    def __repr__(self):
+        return repr(self.to_repr())
+
+    @classmethod
+    def from_repr(cls, yaml_dict):
+        return cls(yaml_dict)
+
+    def get(self):
+        return self.func
+
 class DistAttr(Dist):
 
     def get(self):
@@ -67,7 +88,7 @@ class Config:
                 return {cls._serialize(k): cls._serialize(v) for k, v in val.items()}
             else:
                 return list(cls._serialize(k) for k in val)
-        elif isinstance(val, Dist):
+        elif isinstance(val, Dist) or isinstance(val, Func):
             return val.to_repr()
         else:
             return val
@@ -112,7 +133,7 @@ class Config:
             return {k: cls._get(v) for k, v in val.items()}
         elif isinstance(val, list):
             return [cls._get(v) for v in val]
-        if isinstance(val, Dist):
+        if isinstance(val, Dist) or isinstance(val, Func):
             return val.get()
         else:
             return val

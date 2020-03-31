@@ -1,12 +1,14 @@
 from collections.abc import Iterable
 
 class BaseMessage(object):
-    __slots__ = ('sender', 'data')
+    __slots__ = ('sender', 'data', 'pre_task', 'post_task')
     base_size = 20
 
-    def __init__(self, sender, data=None):
+    def __init__(self, sender, data=None, **kwargs):
         self.sender = sender
         self.data = data
+        self.pre_task = kwargs.pop('pre_task', None)
+        self.post_task = kwargs.pop('post_task', None)
 
     @property
     def size(self):
@@ -56,8 +58,8 @@ class RequestPeers(BaseMessage):
 class PeerList(BaseMessage):
     """Peer list with known peers"""
 
-    def __init__(self, sender, peers):
-        super().__init__(sender, set(peers))
+    def __init__(self, sender, peers, **kwargs):
+        super().__init__(sender, set(peers), **kwargs)
 
     def __repr__(self):
         return 'PeerList'
@@ -71,11 +73,10 @@ class Hello(BaseMessage):
 
 class GossipMessage(BaseMessage):
 
-    __slots__ = ('sender', 'data', 'ttl', 'id')
     size = 1024
     
-    def __init__(self, sender, msg_id, data, ttl):
-        super().__init__(sender, data)
+    def __init__(self, sender, msg_id, data, ttl, **kwargs):
+        super().__init__(sender, data, **kwargs)
         self.ttl = ttl
         self.id = msg_id
 
