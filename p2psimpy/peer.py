@@ -125,15 +125,6 @@ class Peer:
             for cb in self.disconnect_callbacks:
                 cb(self, other)
 
-    def pre_receive(self, msg):
-        if msg_type not in self.mh_map:
-            if self.logger:
-                self.logger.error("No handler for the message %s", msg_type)
-            raise Exception("No handler for the message %s at peer %s", msg_type, repr(self))
-        for service_id in self.mh_map[msg_type]:
-            self.handlers[service_id].handle_message(msg)
-
-
     def receive(self, msg):
         """
         Receive message, will trigger handlers on the message
@@ -141,7 +132,6 @@ class Peer:
         :return:
         """
         if self.online:
-            msg_type =  type(msg)
             msg_sender =  msg.sender
 
             # Monitor the overhead of the message size 
@@ -155,12 +145,19 @@ class Peer:
             if self.logger:
                 self.logger.info("%s: Received message <%s> from %s", self.env.now, repr(msg), msg_sender)
 
-            if msg_type not in self.mh_map:
+            # Find the services that should be triggered
+            services = set()
+            for msg_type in self.mh_map:
+                if isinstance(msg, msg_type):
+                    services.update(self.mh_map[msg_type])
+
+            if not services:
                 if self.logger:
                     self.logger.error("No handler for the message %s", msg_type)
-                raise Exception("No handler for the message %s at peer %s", msg_type, repr(self))
-            for service_id in self.mh_map[msg_type]:
-                self.handlers[service_id].handle_message(msg)
+                raise Exception("No handler for the message ", msg_type, repr(self))
+            else: 
+                for service_id in services:
+                    self.handlers[service_id].handle_message(msg)
 
     def send(self, receiver, msg):
         """
@@ -237,7 +234,7 @@ class Peer:
         if storage_name not in self.storage:
             if self.logger:
                 self.logger.error("No storage %s found", storage_name)
-            raise Exception("No storage %s found", storage_name)
+            raise Exception("No storage {} found" % storage_name)
         self.storage[storage_name].add(msg_id, msg)
 
     def add_storage(self, storage_name, storage):

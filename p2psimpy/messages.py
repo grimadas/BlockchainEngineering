@@ -73,7 +73,7 @@ class Hello(BaseMessage):
 
 class GossipMessage(BaseMessage):
 
-    size = 1024
+    base_size = 250
     
     def __init__(self, sender, msg_id, data, ttl, **kwargs):
         super().__init__(sender, data, **kwargs)

@@ -12,11 +12,26 @@ class Storage:
 		else:
 			self.times_seen[tx_id] += 1
 
+	def batch_add(self, batch_txs):
+		self.txs.update(batch_txs)
+
+	def remove(self, tx_id):
+		self.txs.pop(tx_id)
+		self.times_seen.pop(tx_id)
+
+	def clear_all(self):
+		self.txs.clear()
+		self.times_seen.clear()
+
 	def get_known_tx_ids(self):
 		return self.txs.keys()
 
 	def get(self, msg_id):
 		return self.txs.get(msg_id)
+
+	def get_all_by_prefix(self, prefix):
+		return {k:v for k,v in self.txs.items() if str(k).startswith(prefix)}
+
 
 
 class RangedStorage(Storage):

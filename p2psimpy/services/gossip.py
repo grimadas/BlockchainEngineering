@@ -1,6 +1,6 @@
 from p2psimpy.services.base import BaseHandler, BaseRunner
 from p2psimpy.messages import GossipMessage, SyncPing, SyncPong, MsgRequest, MsgResponse
-from p2psimpy.storage import Storage, RangedStorage
+from p2psimpy.storage.simple import Storage, RangedStorage
 
 from p2psimpy.utils import Cache
 from p2psimpy.config import Dist
@@ -192,6 +192,24 @@ class RangedPullGossipService(PullGossipService):
     def _store_message(self, msg, msg_id=None):
         if msg:
             super()._store_message(msg, msg_id)
+
+class FullGossipService(PullGossipService):
+
+    def _init_stores(self):
+        super()._init_stores()
+        self.peer.add_storage('msg_time', Storage())
+        self.peer.add_storage('msg_data', Storage())
+
+    def finalized(self, tx_id, version):
+        # Version of a transaction is finalized
+        # Remove from working pool
+        pass
+
+    def _form_message_response(self, msg):
+        response = {}
+        for k in msg.data:
+            response[k] = self.peer.get_storage('msg_data').get_all_versions(k)
+        return response
 
 
 class PushPullGossipService(PullGossipService, GossipService):

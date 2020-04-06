@@ -10,6 +10,8 @@ def make_symmetric(matrix):
         if c[0] not in matrix or c[1] not in matrix[c[0]]:
             matrix[c[0]][c[1]] = matrix[c[1]][c[0]]
 
+def to_hash(str_msg):
+    return str(hex(abs(hash(str_msg))))
 
 class Cache:
 

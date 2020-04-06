@@ -1,6 +1,6 @@
 from p2psimpy.services.base import BaseRunner
 from p2psimpy.messages import GossipMessage
-from p2psimpy.storage import Storage
+from p2psimpy.storage.simple import Storage
 
 import random
 import string
