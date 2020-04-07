@@ -1,0 +1,20 @@
+name: p2psimpy
+channels:
+  - conda-forge
+dependencies:
+  - python=3.7
+  - jupyterlab>=2.0.0
+  - numpy>=1.18.1
+  - scipy>=1.3.0
+  - notebook
+  - matplotlib
+  - pandas
+  - ipywidgets>=7.5
+  - PyYaml
+  - pip
+  - networkx
+  - graphviz
+  - pydot
+  - seaborn
+  - pip:
+    - simpy
