@@ -1,10 +1,7 @@
-from p2psimpy.simulation import BaseSimulation
 import matplotlib.pyplot as plt
 import networkx as nx
 from matplotlib.animation import FuncAnimation
 from networkx.drawing.nx_pydot import graphviz_layout
-
-from p2psimpy.consts import MBit
 
 
 def visualize_peer_client_network(G):

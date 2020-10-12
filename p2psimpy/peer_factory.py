@@ -1,6 +1,4 @@
-from itertools import count
-
-from p2psimpy.config import PeerType, Config
+from p2psimpy.config import PeerType
 from p2psimpy.peer import Peer
 
 
@@ -25,7 +23,6 @@ class PeerFactory:
         p = Peer(sim, peer_id, type_name, **peer_config_gen.get())
 
         for service in services:
-            serv = None
             if service_configs and service_configs[service]:
                 args = service_configs[service].get()
                 serv = service(p, **args)

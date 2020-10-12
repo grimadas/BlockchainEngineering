@@ -139,6 +139,7 @@ class BaseSimulation(object):
         return self.locations.fetch(origin, destination)
 
     def save_experiment(self, expr_dir='expr', include_module_classes=False):
+        '''Save your experiment configurations to yaml files'''
         import yaml
         # Save locations 
         if not os.path.exists(expr_dir):
@@ -241,6 +242,7 @@ class BaseSimulation(object):
                 p.start_all_runners()
 
     def get_graph(self, include_bootstrap_peers=False):
+        '''Get current topology of the simulation'''
         G = nx.Graph()
         online_map = dict()
         for p in self.peers_types.keys():

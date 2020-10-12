@@ -167,12 +167,12 @@ class RangedPullGossipService(PullGossipService):
         return self.strg.get_all_last()
 
     def _self_missing(self, msg):
-        # msg contains dict of form {c_id: last}
+        # msg contains dict of form {client_id: last}
         missing = set()
-        for k, v in msg.data.items():
-            self.strg.pre_add(k, v)
-            for h in self.strg.get_holes(k):
-                missing.add(str(h)+'_'+str(k))
+        for p_id, last in msg.data.items():
+            self.strg.pre_add(p_id, last)
+            for h_id in self.strg.get_holes(p_id):
+                missing.add(str(p_id)+'_'+str(h_id))
 
         if len(missing) > 0:
             # Request missing messages
@@ -182,9 +182,9 @@ class RangedPullGossipService(PullGossipService):
 
         peer_missing = dict()
         my_last = self.strg.get_all_last()
-        for k, v in my_last.items():
-            if not msg.data.get(k) or msg.data[k] < v:
-                peer_missing[k] = v
+        for p_id, last in my_last.items():
+            if not msg.data.get(p_id) or msg.data[p_id] < last:
+                peer_missing[p_id] = last
 
         if len(peer_missing) > 0:
             self.peer.send(msg.sender, SyncPong(self.peer, peer_missing))

@@ -1,5 +1,7 @@
 from itertools import product
 from copy import deepcopy
+import networkx as nx
+from random import sample
 
 
 def make_symmetric(matrix):
@@ -10,8 +12,24 @@ def make_symmetric(matrix):
         if c[0] not in matrix or c[1] not in matrix[c[0]]:
             matrix[c[0]][c[1]] = matrix[c[1]][c[0]]
 
+
 def to_hash(str_msg):
     return str(hex(abs(hash(str_msg))))
+
+def prepare_topology(num_peers=25, num_clients=1, client_deg=5):    
+    # Create network topology
+    G = nx.erdos_renyi_graph(num_peers, 0.4)   
+    nx.relabel_nodes(G, {k: k+1 for k in G.nodes()} ,copy=False)
+    
+    for c_id in range(num_peers+1, num_clients+num_peers+1):
+        for p_id in sample( list(G.nodes()), min(client_deg, len(G.nodes()))):
+            G.add_edge(c_id, p_id)
+
+    types_map = {k: 'peer' if k < num_peers+1 else 'client' for k in G.nodes()}
+    # Assign a peer type to the peers 
+    nx.set_node_attributes(G, types_map , 'type')
+    return G
+
 
 class Cache:
 
@@ -33,7 +51,7 @@ class Cache:
             if hasattr(generator, "params"):
                 self._set(generator.generate(self.num), *args)
             else:
-                self._set( [generator] * self.num, *args)
+                self._set([generator] * self.num, *args)
             val = self._pop(*args)
         return val
 

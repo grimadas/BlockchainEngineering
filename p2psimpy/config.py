@@ -10,6 +10,9 @@ PeerType = namedtuple('PeerType', ('config', 'service_map'), defaults=(None, {})
 
 
 class Dist(object):
+    """Wrapper on scipy.stats functios.
+    Able to generate a value distribution
+    """
 
     def __init__(self, name: str, params):
         self.name = name
