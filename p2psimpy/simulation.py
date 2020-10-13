@@ -92,8 +92,9 @@ class BaseSimulation(object):
             # Load services 
             for type_name, peer_type in peer_types_map.items():
                 s_map = peer_types_map[type_name].service_map
+                smap_keys = s_map.keys() if type(s_map) == dict else s_map
                 new_map = dict() 
-                for k in s_map.keys():
+                for k in smap_keys:
                     if type(k) == str:
                         new_map[servs_impl[k]] = s_map[k] if type(s_map) == dict else None
                     else:
