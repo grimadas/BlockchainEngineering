@@ -12,7 +12,7 @@ The main focus of this notebook is to explain and visually show how to understan
 
 At the end of this course you will have a better understanding of the challenges faced while designing a blockchain system and how to overcome them.
 
-The notebooks are built as experiments with a discrete simulation SimPy, this allows you to simulate unreliable communication, malicious behavior and convergence algorithms.   
+The notebooks are built as experiments with a discrete simulation SimPy that allows you to simulate unreliable communication, malicious behavior and convergence algorithms.   
 
 --------------------------------------------------------------------------------
 
