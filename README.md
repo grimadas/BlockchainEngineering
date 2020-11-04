@@ -5,18 +5,18 @@
 
 --------------------------------------------------------------------------------
 
-**Blockchain Engineering** is a collection of jupyter notebooks to teach fundamentals of any blockchain system.
+**Blockchain Engineering** is a collection of jupyter notebooks to teach the fundamentals of any blockchain system.
 
-Rather than other blockchain courses we follow a different approach we build up blockchain from scratch from bottom to the top. 
-The main focus of this notebook is to explain and visually show the "Distribtued systems thinking", and Blokchain architehct thinking in particular.
+As opposed to other blockchain courses we follow a different approach - we build the blockchain up from scratch, starting from bottom to the top. 
+The main focus of this notebook is to explain and visually show how to understand distributed systems and think like a blockchain architect.
 
-After this course you will get what is the problems you will solve? What issues you might encounter? Why is it so hard to design a good system? 
+At the end of this course you will have a better understanding of the challenges faced while designing a blockchain system and how to overcome them.
 
-The notebooks are build as experiments with a discrete simulation SimPy, this allows you to simulate unreliable communication, malicious behavior and convergence algorithms.   
+The notebooks are built as experiments with a discrete simulation SimPy, this allows you to simulate unreliable communication, malicious behavior and convergence algorithms.   
 
 --------------------------------------------------------------------------------
 
-## Current topics 
+## Topics covered
 
 * [Distributed systems](https://github.com/grimadas/BlockchainEngineering/blob/master/01_Intro_To_Distribtued_Systems.ipynb). Overlays and communication network. Introduction to simulation framework
 * [Gossip](https://github.com/grimadas/BlockchainEngineering/blob/master/02_Gossip_Services.ipynb). Convergence of the transactions, information
@@ -24,7 +24,7 @@ The notebooks are build as experiments with a discrete simulation SimPy, this al
 * [Malicious](https://github.com/grimadas/BlockchainEngineering/blob/master/04_Byzantine.ipynb) nodes, adversary model
 * [Consensus](https://github.com/grimadas/BlockchainEngineering/blob/master/05_Consensus.ipynb) and agreement despite malicious nodes
 
-If you notice anything unexpected, or you are want more topics, please open an [issue](https://github.com/grimadas/BlockchainEngineering/issues) and let us know.
+If you notice anything unexpected, or you want more topics, please open an [issue](https://github.com/grimadas/BlockchainEngineering/issues) and let us know.
 If you like the project and want to help us, contributions are very welcome! Feel free to open a [feature request](https://github.com/grimadas/BlockchainEngineering/issues).
 We are motivated to constantly make it better.
 
@@ -53,7 +53,7 @@ git clone  https://github.com/grimadas/BlockchainEngineering.git
     pip install -r requirements.txt
     ```
   
-4. You can start the exercises by opening the notebooks via: 
+4. You can start the exercises by opening the notebooks via from your cloned directory: 
   ```bash
    jupyter lab
   ```
