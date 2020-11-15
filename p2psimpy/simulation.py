@@ -23,11 +23,11 @@ class BaseSimulation(object):
                  servs_impl=None, enable_logger=False, logger_dir='logs', **kwargs):
         """
             Initialize simulation with known locations, topology and services.
-            :param locations: Known locations. Either a yaml file_name, or a Config class.
-            :param topology: subscribable object map: peer_id -> type, optionally also connections to other peers
-            :param peer_types_map: A map with 'type' -> PeerType objects
-            :param logger_dir: directory to store peer logs. default: './logs/'
-            :param random_seed: for reproducibility for your experiments.
+            locations: Known locations. Either a yaml file_name, or a Config class.
+            topology: subscribable object map: peer_id -> type, optionally also connections to other peers
+            peer_types_map: A map with 'type' -> PeerType objects
+            logger_dir: directory to store peer logs. default: './logs/'
+            random_seed: for reproducibility for your experiments.
         """
 
         if 'random_seed' in kwargs:
@@ -35,7 +35,7 @@ class BaseSimulation(object):
             random.seed(self.random_seed)
         self.sim_time = kwargs.get('sim_time', None)
 
-        # Setup logging dir
+        # Setup logging directory
         if enable_logger or logger_dir != 'logs':
             self.sim_dir = logger_dir
             if not os.path.exists(self.sim_dir):
@@ -46,13 +46,13 @@ class BaseSimulation(object):
             self.sim_dir = None
             self.logger = None
 
-        # Init the environment
+        # Initialize the simulation environment
         self.env = Environment()
 
         self._locs = locations
         self._top = topology
 
-        # Init locations and latencies
+        # Initialize locations and latencies
         if type(locations) == str:
             # yaml file - try to load
             self._location_generator = load_config_from_yaml(locations).latencies
@@ -113,7 +113,7 @@ class BaseSimulation(object):
             peer_type = self.peer_types_configs[peer_type_name]
             self.peers[p] = self.peer_factory.create_peer(self, peer_type_name, peer_type, p)
 
-        # Bootstrap connect peers
+        # Bootstrap connect to peers
         # If there are connections =>
         for p in list(self.peers.keys()):
             if self.topology[p]:
@@ -155,7 +155,7 @@ class BaseSimulation(object):
             with open(top_file, 'w') as s:
                 yaml.dump(self._top, s)
         else:
-            # This is networkx file 
+            # This is networkx file
             nx.write_yaml(self._top, top_file)
 
         dump_serv = {}
@@ -184,6 +184,7 @@ class BaseSimulation(object):
             yaml.dump([dump_serv, services], s)
 
     @staticmethod
+    # Load the experiment - obtain peer locations and services from the saved yaml files
     def load_experiment(expr_dir='expr', load_modules=False):
         import yaml
         loc_file = os.path.join(expr_dir, "locations.yaml")
@@ -209,6 +210,7 @@ class BaseSimulation(object):
             servs[sk] = PeerType(peer_config, new_services)
         return locs, top, servs, services
 
+    # Add peer p
     def _add_peer(self, p):
         self.peers[p.peer_id] = p
         self.peers_types[p.peer_id] = p.peer_type
@@ -219,7 +221,7 @@ class BaseSimulation(object):
     def _init_default_bootstrap_servers(self, locations, num=1, active_p2p=False):
         """
         Initialize bootstrap servers: create bootstrap peers and start them immediately.
-        :param num: number of servers
+        num: number of servers
         """
         if self.logger:
             self.logger.warning("Init default bootstrap servers")
@@ -229,6 +231,7 @@ class BaseSimulation(object):
             p = self.peer_factory.create_peer(self, 'bootstrap', bpt)
             self._add_peer(p)
 
+    # Get names of all peers connected
     def get_peers_names(self, peer_type):
         if peer_type not in self.peers:
             return None
@@ -261,6 +264,7 @@ class BaseSimulation(object):
         nx.set_node_attributes(G, online_map, 'is_online')
         return G
 
+    # Get average bandwidh of all the peer connections
     def avg_bandwidth(self):
         bws = []
         for peer in self.peers.items():
@@ -268,6 +272,7 @@ class BaseSimulation(object):
                 bws.append(c.bandwidth)
         return sum(bws) / len(bws)
 
+    # Get median bandwidh of all the peer connections
     def median_bandwidth(self):
         bws = []
         for peer in self.peers.items():
@@ -276,8 +281,10 @@ class BaseSimulation(object):
         bws.sort()
         return bws[int(len(bws) / 2)]
 
+    # Run the peer with a time limit of until
     def run(self, until):
         self.env.run(until)
 
+    # Stop the peer simulation
     def stop(self):
         self.env.exit(0)

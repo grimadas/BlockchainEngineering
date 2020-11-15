@@ -4,6 +4,7 @@ from p2psimpy.peer import Peer
 
 class PeerFactory:
 
+    # Initialize peer with self
     def __init__(self):
         self._last = 1
 
@@ -16,6 +17,7 @@ class PeerFactory:
             if int(peer_id) > self._last:
                 self._last = int(peer_id)
 
+        # Add peer services and config and start peer services
         peer_config_gen = peer_type.config
         services = peer_type.service_map.keys() if type(peer_type.service_map) == dict else peer_type.service_map
         service_configs = peer_type.service_map if type(peer_type.service_map) == dict else None

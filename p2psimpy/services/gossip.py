@@ -37,6 +37,7 @@ class GossipService(BaseHandler):
         self.peer.add_storage('msg_time', Storage())
         self.peer.add_storage('msg_data', Storage())
 
+    # Simulate time delays
     def wait(self):
         yield self.env.timeout(100)
 
@@ -56,7 +57,7 @@ class GossipService(BaseHandler):
     def messages(self):
         return GossipMessage,
 
-
+# Message response handler
 class MessageResponder(BaseHandler):
 
     def _form_message_response(self, msg):
@@ -73,7 +74,7 @@ class MessageResponder(BaseHandler):
     def messages(self):
         return MsgRequest,
 
-
+# Implementation of pull based gossip
 class PullGossipService(MessageResponder, BaseRunner):
 
     def __init__(self, peer,
@@ -155,7 +156,7 @@ class PullGossipService(MessageResponder, BaseRunner):
     def messages(self):
         return GossipMessage, SyncPing, SyncPong, MsgRequest, MsgResponse
 
-
+# Pull based gossip for ranged indices of peers
 class RangedPullGossipService(PullGossipService):
 
     def _init_stores(self):

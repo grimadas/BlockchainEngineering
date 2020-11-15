@@ -27,8 +27,8 @@ class Connection:
         Simulate fire and forget send.
         i.e. we don't get notified if the message was not delivered
 
-        :param msg: Message tuple to deliver
-        :param connect : deliver message even if not connected yet, similar to UDP
+        msg: Message tuple to deliver
+        connect : deliver message even if not connected yet, similar to UDP
         """
 
         def _transfer():

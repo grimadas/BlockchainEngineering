@@ -4,6 +4,7 @@ import networkx as nx
 from random import sample
 
 
+# Fill incomplete matrix to get a symmetric matrix - used for the latency matrix
 def make_symmetric(matrix):
     vals = matrix.keys()
     comb = product(vals, vals)
@@ -13,6 +14,7 @@ def make_symmetric(matrix):
             matrix[c[0]][c[1]] = matrix[c[1]][c[0]]
 
 
+# Convert message string to hash value
 def to_hash(str_msg):
     return str(hex(abs(hash(str_msg))))
 
@@ -31,6 +33,7 @@ def prepare_topology(num_peers=25, num_clients=1, client_deg=5):
     return G
 
 
+# Cache operations
 class Cache:
 
     def __init__(self, generator, cache_num=20, symmetric=True):

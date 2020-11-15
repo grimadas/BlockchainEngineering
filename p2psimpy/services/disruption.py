@@ -14,10 +14,10 @@ class BaseDisruption(BaseRunner):
 
     def __init__(self, peer: Peer):
         """
-        :param peer: Peer object
-        :param interval: tick unit to probe disruption. Default: 10 ms
-        :param mtbf: Mean time between failures. default: 10 seconds
-        :param availability: peer availability [0-1] . default: 0.9
+        peer: Peer object
+        interval: tick unit to probe disruption. Default: 10 ms
+        mtbf: Mean time between failures. default: 10 seconds
+        availability: peer availability [0-1] . default: 0.9
         """
         super().__init__(peer)
 
@@ -37,7 +37,7 @@ class BaseDisruption(BaseRunner):
     def disruption_end(self):
         raise NotImplemented
 
-
+# Define intervals for scheduled disruptions
 class ScheduledDisruption(BaseDisruption):
 
     def __init__(self, peer: Peer, schedule):
@@ -50,7 +50,7 @@ class ScheduledDisruption(BaseDisruption):
             yield self.env.timeout(event)
             self.status_change()
 
-
+# Define intervals for random disruptions
 class RandomDisruption(BaseDisruption):
 
     def __init__(self, peer,
@@ -75,7 +75,7 @@ class RandomDisruption(BaseDisruption):
             yield self.env.timeout(self.next())
             self.status_change()
 
-
+# Define intervals for scheduled downtime
 class ScheduledDowntime(ScheduledDisruption):
 
     def __init__(self, peer, schedule):
@@ -91,7 +91,7 @@ class ScheduledDowntime(ScheduledDisruption):
         for other in self.last_peers:
             self.peer.bootstrap_connect(other)
 
-
+# Define intervals for random downtime
 class RandomDowntime(RandomDisruption):
 
     def __init__(self, peer,

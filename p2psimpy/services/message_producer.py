@@ -6,6 +6,10 @@ import random
 import string
 
 
+# Class that handles producing and gossip. 
+# msg_rate: Number of messages per second
+# init_timeout: Initial timeout before first message
+# init_fanout: Factor to determine how many peer connections to gossip  
 class MessageProducer(BaseRunner):
 
     def __init__(self, peer, init_timeout=1000, msg_rate=5,
