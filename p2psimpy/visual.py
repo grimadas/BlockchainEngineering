@@ -5,7 +5,7 @@ from networkx.drawing.nx_pydot import graphviz_layout
 
 
 def visualize_peer_client_network(G):
-    # Draw client/ peer network 
+    # Draw client/ peer network using matplotlib
     fig = plt.figure(figsize=(10,10))
     master_nodes = [n for (n,ty) in \
         nx.get_node_attributes(G,'type').items() if ty == 'peer']
