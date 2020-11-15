@@ -21,7 +21,7 @@ class BaseMessage(object):
 
         iter_size = 0 
         if isinstance(self.data, Iterable):
-            # data is an interable - go through and add to size 
+            # data is an iterable - go through and add to size 
             for sub_msg in self.data: 
                 iter_size += _count_size(sub_msg)
             if type(self.data) == dict:
