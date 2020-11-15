@@ -14,6 +14,8 @@ At the end of this course you will have a better understanding of the challenges
 
 The notebooks are built as experiments with a discrete simulation SimPy that allows you to simulate unreliable communication, malicious behavior and convergence algorithms.   
 
+*Start the exercises by forking the repo and go through the notebooks one by one.*
+
 --------------------------------------------------------------------------------
 
 ## Topics covered
@@ -36,7 +38,7 @@ We are motivated to constantly make it better.
 
 
 
-1. Clone the repository:
+1. Clone/Fork the repository:
 
 ```bash
 git clone  https://github.com/grimadas/BlockchainEngineering.git
