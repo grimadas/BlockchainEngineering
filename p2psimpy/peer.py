@@ -15,9 +15,11 @@ class Peer:
                  location: str, bandwidth_ul: float, bandwidth_dl: float, **kwargs):
         """
         Physical representation of a Peer
-        :param sim: Simulation environment
-        :param name:
-        :param location:
+        sim: Simulation environment
+        name: Info about peer type and peer id
+        location: Physical location of peer
+        bandwidth_ul: Uplink bandwidth
+        bandwidth_dl: Downlink bandwidth
         """
         self.sim = sim
         self.env = sim.env
@@ -30,6 +32,7 @@ class Peer:
         self.__dict__.update(kwargs)
 
         peer_repr = repr(self)
+        # Define log file path for results of the simulation
         if sim.sim_dir:
             self.log_name = os.path.join(sim.sim_dir, peer_repr + ".log")
             self.logger = setup_logger(peer_repr, self.log_name)
@@ -40,7 +43,7 @@ class Peer:
         # Message queue for the received messages
         self.msg_queue = Store(self.env)
 
-        # Network connections
+        # Network connections that are online
         self.online = True
         self.connections = dict()
 
@@ -79,20 +82,21 @@ class Peer:
             delay = num_bytes / self.bandwidth_dl
             yield self.env.timeout(delay)
 
-            # Trigger pre-receive Triggers if any
+            # Trigger pre-receive tasks if any
             if msg.pre_task:
                 val = yield self.env.process(msg.pre_task(msg, self))
             if not msg.pre_task or val:
                 self.receive(msg)
-            # Trigger post-receive if any
+            # Trigger post-receive tasks if any
 
+    # Check for connection with any particular peer object
     def is_connected(self, other):
         return other in self.connections
 
     def bootstrap_connect(self, other):
         """
         Create ad-hoc connection and send Hello
-        :param other: peer object
+        other: peer object
         """
         #
         cnx = Connection(self, other)
@@ -101,7 +105,7 @@ class Peer:
     def connect(self, other):
         """
         Add peer to the connections and repeat the same with other peer
-        :param other: peer object
+        other: peer object
         """
         if not self.is_connected(other):
             if self.logger:
@@ -114,7 +118,7 @@ class Peer:
     def disconnect(self, other):
         """
         Disconnect with previously connected peer
-        :param other: peer object
+        other: peer object
         """
         if self.is_connected(other):
             if self.logger:
@@ -128,8 +132,7 @@ class Peer:
     def receive(self, msg):
         """
         Receive message, will trigger handlers on the message
-        :param msg:
-        :return:
+        msg: message object
         """
         if self.online:
             msg_sender =  msg.sender
@@ -175,6 +178,7 @@ class Peer:
                 self.logger.info("%s: Sending message <%s> to %s", self.env.now, repr(msg), receiver)
             self.connections[receiver].send(msg)
 
+    # Get all peer connections
     def _get_connections(self, exclude_bootstrap=True, except_set: set = None, except_type: set = None):
         if except_set is None:
             except_set = set()
@@ -188,11 +192,11 @@ class Peer:
     def gossip(self, msg, f, exclude_bootstrap=True, except_peers: set = None, except_type: set = None):
         """
         Send to f neighbours selected randomly
-        :param msg: Message
-        :param f: the fanout parameter (number of peers to gossip to)
-        :param exclude_bootstrap: Exclude bootstrap from gossip
-        :param except_peers: connected peers to exclude from gossip
-        :param except_type: exclude from gossip type of peers
+        msg: Message object
+        f: the fanout parameter (number of peers to gossip to)
+        exclude_bootstrap: Exclude bootstrap from gossip
+        except_peers: connected peers to exclude from gossip
+        except_type: exclude from gossip type of peers
         """
         if not self.online:
             return None
@@ -211,7 +215,7 @@ class Peer:
 
     def add_service(self, service):
         """
-        Add service to the peer
+        Add a service to the peer
         """
         serv_name = type(service).__name__
         if isinstance(service, BaseHandler):
@@ -223,13 +227,16 @@ class Peer:
         if isinstance(service, BaseRunner):
             self.runners[serv_name] = service
 
+    # Start all peer serice runners
     def start_all_runners(self):
         for runner in self.runners.values():
             runner.start()
 
+    # Get storage used by the peer
     def get_storage(self, storage_name):
         return self.storage.get(storage_name)
 
+    # Store message in peer storage
     def store(self, storage_name, msg_id, msg):
         if storage_name not in self.storage:
             if self.logger:
@@ -237,5 +244,6 @@ class Peer:
             raise Exception("No storage {} found" % storage_name)
         self.storage[storage_name].add(msg_id, msg)
 
+    # Add new storage for the peer
     def add_storage(self, storage_name, storage):
         self.storage[storage_name] = storage
