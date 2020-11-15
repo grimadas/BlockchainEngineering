@@ -1,7 +1,7 @@
 
-<!--<p align="center">
-  <img width="90%" src="https://github.com/benedekrozemberczki/littleballoffur/blob/master/littleballoffurlogo.jpg?sanitize=true" />
-</p>-->
+<p align="center">
+  <img width="90%" src="https://github.com/grimadas/BlockchainEngineering/blob/master/blockhain-engineering-logo.png?sanitize=true" />
+</p>
 
 --------------------------------------------------------------------------------
 
