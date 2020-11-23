@@ -20,7 +20,7 @@ The notebooks are built as experiments with a discrete simulation SimPy that all
 
 ## Topics covered
 
-* [Distributed systems](https://github.com/grimadas/BlockchainEngineering/blob/master/01_Intro_To_Distribtued_Systems.ipynb). Overlays and communication network. Introduction to simulation framework
+* [Distributed systems](https://github.com/grimadas/BlockchainEngineering/blob/master/01_Intro_To_Distributed_Systems.ipynb). Overlays and communication network. Introduction to simulation framework
 * [Gossip](https://github.com/grimadas/BlockchainEngineering/blob/master/02_Gossip_Services.ipynb). Convergence of the transactions, information
 * [Faults](https://github.com/grimadas/BlockchainEngineering/blob/master/03_Faults.ipynb) in distributed systems: crashes and disruptions
 * [Malicious](https://github.com/grimadas/BlockchainEngineering/blob/master/04_Byzantine.ipynb) nodes, adversary model
