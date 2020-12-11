@@ -156,8 +156,8 @@ class Peer:
 
             if not services:
                 if self.logger:
-                    self.logger.error("No handler for the message %s", msg_type)
-                raise Exception("No handler for the message ", msg_type, repr(self))
+                    self.logger.error("No handler for the message %s", type(msg))
+                raise Exception("No handler for the message ", type(msg), repr(self))
             else: 
                 for service_id in services:
                     self.handlers[service_id].handle_message(msg)
