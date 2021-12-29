@@ -17,4 +17,4 @@ dependencies:
   - pydot
   - seaborn
   - pip:
-    - simpy
+    - p2psimpy
